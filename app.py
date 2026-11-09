@@ -170,4 +170,68 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
 
     return get_team_roster(home_id), get_team_roster(away_id)
 
-st
+st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
+st.caption("Fiches joueurs avec photos, statistiques de jeu et détails complets.")
+
+st.sidebar.header("⚙️ Compétition")
+selected_league_label = st.sidebar.selectbox("Ligue / Tournoi", list(LEAGUES.keys()))
+league_code = LEAGUES[selected_league_label]
+selected_date = st.sidebar.date_input("Date cible", date.today())
+mode_recherche = st.sidebar.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
+
+if mode_recherche == "Jour sélectionné uniquement":
+    date_param = selected_date.strftime("%Y%m%d")
+else:
+    d1 = selected_date - timedelta(days=3)
+    d2 = selected_date + timedelta(days=3)
+    date_param = d1.strftime("%Y%m%d") + "-" + d2.strftime("%Y%m%d")
+
+with st.spinner("Recherche des matchs en cours..."):
+    matches = fetch_espn_matches(league_code, date_param)
+
+if not matches:
+    st.warning("Aucune rencontre trouvée pour cette période.")
+else:
+    match_labels = {}
+    for m in matches:
+        label = "[" + m["date"] + " " + m["time"] + " UTC] " + m["home"] + " vs " + m["away"] + " " + m["score"] + " - " + m["status"]
+        match_labels[label] = m
+
+    selected_label = st.selectbox("Sélectionnez le match :", list(match_labels.keys()))
+    current_match = match_labels[selected_label]
+
+    st.divider()
+    home_name = current_match["home"]
+    away_name = current_match["away"]
+
+    st.subheader("🏟️ " + home_name + " vs " + away_name)
+    st.caption("Date : " + current_match["date"] + " | Coup d'envoi : " + current_match["time"] + " UTC | Statut : " + current_match["status"] + " " + current_match["score"])
+
+    with st.spinner("Analyse des effectifs et photos..."):
+        home_players, away_players = fetch_match_or_team_players(
+            league_code, current_match["id"], current_match["home_id"], current_match["away_id"]
+        )
+
+    for p in home_players:
+        p["team"] = home_name
+    for p in away_players:
+        p["team"] = away_name
+
+    all_field = home_players + away_players
+    buteurs = [p for p in all_field if p["category"] == "Attaquant"]
+    passeurs = [p for p in all_field if p["category"] in ["Milieu", "Attaquant"]]
+
+    tab_buteurs, tab_passeurs, tab_effectifs = st.tabs(["🎯 Buteurs Potentiels", "🅰️ Passeurs Potentiels", "📋 Effectifs Complets"])
+
+    def display_player_cards(container, player_list):
+        if not player_list:
+            container.info("Aucun joueur répertorié pour cette sélection.")
+            return
+
+        cols = container.columns(2)
+        placeholder_img = "https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=250&h=180"
+
+        for idx, p in enumerate(player_list):
+            card_col = cols[idx % 2]
+            card_box = card_col.container(border=True)
+            img_c,
