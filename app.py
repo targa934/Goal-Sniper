@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 # ---------------------------------------------------------------------------
 # CONFIGURATION
@@ -21,7 +21,7 @@ LEAGUES = {
 }
 
 # ---------------------------------------------------------------------------
-# BASE STATISTIQUE DES JOUEURS OFFENSIFS PAR CLUB (xG, Tirs, xA, Penalty)
+# BASE STATISTIQUE JOUEURS & CLUBS (Tirs, xG, xA, Penalties)
 # ---------------------------------------------------------------------------
 PLAYERS_DATABASE = [
     # Ligue 1
@@ -60,14 +60,11 @@ PLAYERS_DATABASE = [
 ]
 
 # ---------------------------------------------------------------------------
-# RÉCUPÉRATION DES MATCHS À VENIR (ESPN SCOREBOARD)
+# APPEL API ESPN (CALENDRIER ILLIMITÉ PAR DATE)
 # ---------------------------------------------------------------------------
-@st.cache_data(ttl=300)
-def fetch_upcoming_matches(league_code):
-    """
-    Récupère le calendrier des matchs à venir sans restriction de date.
-    """
-    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/scoreboard"
+@st.cache_data(ttl=180)
+def fetch_espn_matches_by_date(league_code, date_str):
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/scoreboard?dates={date_str}"
     try:
         r = requests.get(url, headers=HEADERS, timeout=10)
         if r.status_code != 200:
@@ -78,26 +75,30 @@ def fetch_upcoming_matches(league_code):
             comp = ev.get("competitions", [{}])[0]
             competitors = comp.get("competitors", [])
             
-            home_team = "Domicile"
-            away_team = "Extérieur"
+            home_team, away_team = "Domicile", "Extérieur"
+            home_score, away_score = "", ""
+            
             for c in competitors:
                 if c.get("homeAway") == "home":
                     home_team = c.get("team", {}).get("displayName", "")
+                    home_score = c.get("score", "")
                 else:
                     away_team = c.get("team", {}).get("displayName", "")
+                    away_score = c.get("score", "")
 
-            date_raw = ev.get("date", "")
-            date_formatted = date_raw[:10] if len(date_raw) >= 10 else "Date inconnue"
-            time_formatted = date_raw[11:16] if len(date_raw) >= 16 else "Heure N/D"
-            status_text = comp.get("status", {}).get("type", {}).get("shortDetail", "Programmé")
+            raw_date = ev.get("date", "")
+            time_str = raw_date[11:16] if len(raw_date) >= 16 else "N/D"
+            status_text = comp.get("status", {}).get("type", {}).get("shortDetail", "")
+            score_display = f"({home_score} - {away_score})" if home_score and away_score else ""
 
             matches.append({
                 "id": ev.get("id"),
                 "home": home_team,
                 "away": away_team,
-                "date": date_formatted,
-                "time": time_formatted,
-                "status": status_text
+                "time": time_str,
+                "status": status_text,
+                "score": score_display,
+                "date": raw_date[:10]
             })
         return matches
     except Exception:
@@ -107,85 +108,37 @@ def fetch_upcoming_matches(league_code):
 # INTERFACE UTILISATEUR
 # ---------------------------------------------------------------------------
 st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
-st.caption("Analyse des matchs à venir sans attendre les compositions officielles.")
+st.caption("Sélection libre par calendrier • Analyse instantanée passée ou à venir.")
 
 with st.sidebar:
-    st.header("⚙️ Championnat")
-    selected_league_label = st.selectbox("Ligue", list(LEAGUES.keys()))
+    st.header("⚙️ Filtres de Recherche")
+    selected_league_label = st.selectbox("Championnat", list(LEAGUES.keys()))
     league_code = LEAGUES[selected_league_label]
 
-    st.subheader("Filtres de sensibilité")
-    min_shots = st.slider("Tirs min / 90m (Buteurs)", 1.5, 4.0, 2.4, step=0.1)
-    min_xg = st.slider("xG min / 90m (Buteurs)", 0.20, 0.80, 0.40, step=0.05)
-    min_xa = st.slider("xA min / 90m (Passeurs)", 0.15, 0.60, 0.25, step=0.05)
+    # Sélecteur de date (Calendrier complet)
+    selected_date = st.date_input("Date cible", date.today())
+    date_query = selected_date.strftime("%Y%m%d")
 
-matches = fetch_upcoming_matches(league_code)
-
-if not matches:
-    st.info(f"Aucun match à venir répertorié pour {selected_league_label} sur les prochains jours.")
-else:
-    match_labels = {f"[{m['date']} à {m['time']} UTC] {m['home']} vs {m['away']} ({m['status']})": m for m in matches}
-    selected_label = st.selectbox("Sélectionnez le match à analyser :", list(match_labels.keys()))
-    current_match = match_labels[selected_label]
+    mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
 
     st.divider()
+    st.subheader("Sensibilité du Radar")
+    min_shots = st.slider("Tirs min / 90m (Buteurs)", 1.5, 4.0, 2.3, step=0.1)
+    min_xg = st.slider("xG min / 90m (Buteurs)", 0.20, 0.80, 0.35, step=0.05)
+    min_xa = st.slider("xA min / 90m (Passeurs)", 0.15, 0.60, 0.25, step=0.05)
 
-    home_name = current_match["home"]
-    away_name = current_match["away"]
+# Récupération des matchs
+if mode_recherche == "Jour sélectionné uniquement":
+    matches = fetch_espn_matches_by_date(league_code, date_query)
+else:
+    matches = []
+    # Interroge de J-3 à J+3
+    for offset in range(-3, 4):
+        d_str = (selected_date + timedelta(days=offset)).strftime("%Y%m%d")
+        matches.extend(fetch_espn_matches_by_date(league_code, d_str))
 
-    st.subheader(f"🏟️ Analyse du match : {home_name} vs {away_name}")
-    st.caption(f"Date de la rencontre : {current_match['date']} • Coup d'envoi à {current_match['time']} UTC")
-
-    # Recherche des joueurs des deux équipes dans la base de données
-    def match_team(team_ref, candidate_name):
-        return team_ref.lower() in candidate_name.lower() or candidate_name.lower() in team_ref.lower()
-
-    players_match = [p for p in PLAYERS_DATABASE if match_team(p["team"], home_name) or match_team(p["team"], away_name)]
-
-    buteurs = []
-    passeurs = []
-
-    for p in players_match:
-        if p["type"] == "buteur":
-            if p["shots"] >= min_shots or p["xg"] >= min_xg:
-                # Calcul de la note sur 10 (pondération tirs + xG + bonus tireur péno)
-                score = min(round((p["shots"] * 1.5) + (p["xg"] * 8.0) + (1.5 if p["pen"] else 0), 1), 9.9)
-                buteurs.append({**p, "score": score})
-        elif p["type"] == "passeur":
-            if p["xa"] >= min_xa or p["key_passes"] >= 2.0:
-                score = min(round((p["key_passes"] * 1.5) + (p["xa"] * 9.0) + (1.0 if p["set_piece"] else 0), 1), 9.9)
-                passeurs.append({**p, "score": score})
-
-    tab_buteurs, tab_passeurs = st.tabs(["🎯 Buteurs Recommandés", "🅰️ Passeurs Recommandés"])
-
-    with tab_buteurs:
-        if buteurs:
-            for b in sorted(buteurs, key=lambda x: x["score"], reverse=True):
-                with st.container(border=True):
-                    col_info, col_metrics = st.columns([2, 3])
-                    with col_info:
-                        st.markdown(f"### ⚽ {b['name']}")
-                        st.write(f"**Club :** {b['team']} ({b['role']})")
-                        st.metric("Indice de Confiance", f"{b['score']} / 10")
-                    with col_metrics:
-                        st.progress(min(b["shots"] / 5.0, 1.0), text=f"Volume de tirs : {b['shots']} / 90m")
-                        st.progress(min(b["xg"] / 1.0, 1.0), text=f"Qualité des occasions (xG) : {b['xg']}")
-                        st.markdown(f"**Tireur de Penalty désigné :** {'Oui 🎯' if b['pen'] else 'Non'}")
-        else:
-            st.info("Aucun profil de pur buteur répertorié dépassant les seuils choisis pour cette affiche.")
-
-    with tab_passeurs:
-        if passeurs:
-            for p in sorted(passeurs, key=lambda x: x["score"], reverse=True):
-                with st.container(border=True):
-                    col_info, col_metrics = st.columns([2, 3])
-                    with col_info:
-                        st.markdown(f"### 🅰️ {p['name']}")
-                        st.write(f"**Club :** {p['team']} ({p['role']})")
-                        st.metric("Indice de Confiance", f"{p['score']} / 10")
-                    with col_metrics:
-                        st.progress(min(p["key_passes"] / 4.0, 1.0), text=f"Passes clés : {p['key_passes']} / 90m")
-                        st.progress(min(p["xa"] / 0.8, 1.0), text=f"Expected Assists (xA) : {p['xa']}")
-                        st.markdown(f"**Coups de pied arrêtés :** {'Oui (Corners / CF) 🎯' if p['set_piece'] else 'Non'}")
-        else:
-            st.info("Aucun profil de distributeur / passeur répertorié dépassant les seuils pour ce match.")
+if not matches:
+    st.info(f"Aucune rencontre trouvée pour {selected_league_label} autour du {selected_date.strftime('%d/%m/%Y')}.")
+else:
+    match_labels = {
+        f"[{m['date']} à {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}
