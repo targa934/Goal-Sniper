@@ -25,17 +25,39 @@ LEAGUES = {
 # ---------------------------------------------------------------------------
 # EXTRACTION DES DONNÉES FOTMOB
 # ---------------------------------------------------------------------------
-@st.cache_data(ttl=180)
-def fetch_matches(date_str, league_id):
+@st.cache_data(ttl=60)
+def fetch_matches(date_str, league_name):
     url = f"https://www.fotmob.com/api/matches?date={date_str}"
     try:
-        r = requests.get(url, headers=HEADERS, timeout=8)
+        r = requests.get(url, headers=HEADERS, timeout=10)
         if r.status_code != 200:
+            st.error(f"Erreur API FotMob (code {r.status_code})")
             return []
+        
         data = r.json()
+        leagues = data.get("leagues", [])
+        
+        # Mots-clés pour retrouver la ligue sans dépendre d'un ID strict
+        keywords = {
+            "Ligue 1": ["ligue 1", "france"],
+            "Premier League": ["premier league", "england"],
+            "Ligue des Champions": ["champions league"],
+            "Liga": ["laliga", "la liga", "spain", "espana"],
+            "Serie A": ["serie a", "italy"],
+            "Bundesliga": ["bundesliga", "germany"]
+        }
+        
+        target_keys = []
+        for k, v in keywords.items():
+            if k.lower() in league_name.lower():
+                target_keys = v
+                break
+
         matches = []
-        for lg in data.get("leagues", []):
-            if lg.get("primaryId") == league_id or lg.get("id") == league_id:
+        for lg in leagues:
+            lg_name = lg.get("name", "").lower()
+            # On vérifie si le nom de la ligue correspond
+            if any(key in lg_name for key in target_keys):
                 for m in lg.get("matches", []):
                     matches.append({
                         "id": m.get("id"),
@@ -45,7 +67,8 @@ def fetch_matches(date_str, league_id):
                         "started": m.get("status", {}).get("started", False)
                     })
         return matches
-    except Exception:
+    except Exception as e:
+        st.error(f"Erreur de lecture : {e}")
         return []
 
 @st.cache_data(ttl=90)
