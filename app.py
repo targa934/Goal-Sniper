@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta
 st.set_page_config(page_title="Radar Buteurs & Passeurs", page_icon="🎯", layout="wide")
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
 LEAGUES = {
@@ -138,8 +138,52 @@ with st.sidebar:
     selected_date = st.date_input("Date cible", date.today())
     mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
 
+def date_to_num(d):
+    return d.isoformat().replace("-", "")
+
 if mode_recherche == "Jour sélectionné uniquement":
-    date_param = selected_date.strftime("%Y%m%d")
+    date_param = date_to_num(selected_date)
 else:
-    d_start = (selected_date - timedelta(days=3)).strftime("%Y%m%d")
-    d_end = (selected_date + timedelta(days=3)).strftime("%
+    d1 = selected_date - timedelta(days=3)
+    d2 = selected_date + timedelta(days=3)
+    date_param = f"{date_to_num(d1)}-{date_to_num(d2)}"
+
+with st.spinner("Recherche des matchs en cours..."):
+    matches = fetch_espn_matches(league_code, date_param)
+
+if not matches:
+    st.warning(f"Aucune rencontre trouvée pour {selected_league_label} autour de la date choisie.")
+else:
+    match_labels = {}
+    for m in matches:
+        label = f"[{m['date']} {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}"
+        match_labels[label] = m
+
+    selected_label = st.selectbox("Sélectionnez le match :", list(match_labels.keys()))
+    current_match = match_labels[selected_label]
+
+    st.divider()
+
+    home_name = current_match["home"]
+    away_name = current_match["away"]
+
+    st.subheader(f"🏟️ {home_name} vs {away_name}")
+    st.caption(f"Date : {current_match['date']} | Coup d'envoi : {current_match['time']} UTC | Statut : {current_match['status']} {current_match['score']}")
+
+    with st.spinner("Analyse des effectifs en cours..."):
+        home_players, away_players = fetch_match_or_team_players(
+            league_code, current_match["id"], current_match["home_id"], current_match["away_id"]
+        )
+
+    for p in home_players:
+        p["team"] = home_name
+    for p in away_players:
+        p["team"] = away_name
+
+    all_field = home_players + away_players
+
+    buteurs_potentiels = []
+    passeurs_potentiels = []
+
+    for p in all_field:
+        pos = p.get("pos",
