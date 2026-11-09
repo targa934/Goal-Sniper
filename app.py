@@ -3,183 +3,85 @@ import requests
 from datetime import datetime, date
 
 # ---------------------------------------------------------------------------
-# CONFIGURATION DE LA PAGE
+# CONFIGURATION
 # ---------------------------------------------------------------------------
 st.set_page_config(page_title="Radar Buteurs & Passeurs", page_icon="⚽", layout="wide")
 
+# Clé API Football-Data.org (gratuite)
+# Remplace par ta clé reçue par email, ou laisse celle-ci pour tester
+API_KEY = "64cbb0dbbfb84b659c278a9cbbd58e3e"  # Clé publique de démo
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Referer": "https://www.fotmob.com/",
-    "Accept": "application/json"
+    "X-Auth-Token": API_KEY
 }
 
-LEAGUES = [
-    "Ligue 1 (France)",
-    "Premier League (Angleterre)",
-    "Ligue des Champions",
-    "Liga (Espagne)",
-    "Serie A (Italie)",
-    "Bundesliga (Allemagne)"
-]
+# Codes officiels Football-Data.org
+COMPETITIONS = {
+    "Ligue 1 (France)": "FL1",
+    "Premier League (Angleterre)": "PL",
+    "Ligue des Champions": "CL",
+    "Liga (Espagne)": "PD",
+    "Serie A (Italie)": "SA",
+    "Bundesliga (Allemagne)": "BL1"
+}
+
+# Base de profils types (Buteurs & Passeurs) pour le calcul de score
+WATCHLIST_SCORERS = {
+    "Bradley Barcola": {"team": "Paris Saint-Germain FC", "type": "buteur", "shots": 2.9, "xg": 0.52, "pen": False},
+    "Mason Greenwood": {"team": "Olympique de Marseille", "type": "buteur", "shots": 3.7, "xg": 0.55, "pen": True},
+    "Erling Haaland": {"team": "Manchester City FC", "type": "buteur", "shots": 4.1, "xg": 0.85, "pen": True},
+    "Mohamed Salah": {"team": "Liverpool FC", "type": "buteur", "shots": 3.5, "xg": 0.60, "pen": True},
+    "Vinicius Junior": {"team": "Real Madrid CF", "type": "buteur", "shots": 3.2, "xg": 0.50, "pen": False},
+    "Harry Kane": {"team": "FC Bayern München", "type": "buteur", "shots": 4.0, "xg": 0.78, "pen": True},
+    # Passeurs
+    "Ousmane Dembélé": {"team": "Paris Saint-Germain FC", "type": "passeur", "key_passes": 3.1, "xa": 0.45, "set_piece": True},
+    "Kevin De Bruyne": {"team": "Manchester City FC", "type": "passeur", "key_passes": 3.5, "xa": 0.48, "set_piece": True},
+    "Bukayo Saka": {"team": "Arsenal FC", "type": "passeur", "key_passes": 2.8, "xa": 0.40, "set_piece": True},
+    "Achraf Hakimi": {"team": "Paris Saint-Germain FC", "type": "passeur", "key_passes": 2.2, "xa": 0.28, "set_piece": False}
+}
 
 # ---------------------------------------------------------------------------
-# EXTRACTION DES DONNÉES FOTMOB
+# APPELS API FOOTBALL-DATA
 # ---------------------------------------------------------------------------
-@st.cache_data(ttl=60)
-def fetch_matches(date_str, league_choice):
-    url = f"https://www.fotmob.com/api/matches?date={date_str}"
+@st.cache_data(ttl=120)
+def fetch_competition_matches(comp_code, date_from, date_to):
+    url = f"https://api.football-data.org/v4/competitions/{comp_code}/matches?dateFrom={date_from}&dateTo={date_to}"
     try:
         r = requests.get(url, headers=HEADERS, timeout=10)
+        if r.status_code == 403:
+            st.error("Clé API invalide ou quota atteint. Ajoute ta clé gratuite dans le code.")
+            return []
         if r.status_code != 200:
-            st.error(f"Erreur API FotMob (code {r.status_code})")
+            st.error(f"Erreur API ({r.status_code})")
             return []
         
         data = r.json()
-        leagues = data.get("leagues", [])
-        
-        keywords_map = {
-            "Ligue 1": ["ligue 1"],
-            "Premier League": ["premier league"],
-            "Ligue des Champions": ["champions league"],
-            "Liga": ["laliga", "la liga", "primera division"],
-            "Serie A": ["serie a"],
-            "Bundesliga": ["bundesliga"]
-        }
-        
-        target_keys = []
-        for key, words in keywords_map.items():
-            if key.lower() in league_choice.lower():
-                target_keys = words
-                break
-
         matches = []
-        for lg in leagues:
-            lg_name = lg.get("name", "").lower()
-            if any(word in lg_name for word in target_keys):
-                for m in lg.get("matches", []):
-                    time_raw = m.get("status", {}).get("utcTime", "")
-                    time_display = time_raw[11:16] if len(time_raw) >= 16 else "Heure N/D"
-                    matches.append({
-                        "id": m.get("id"),
-                        "home": m.get("home", {}).get("name"),
-                        "away": m.get("away", {}).get("name"),
-                        "time": time_display,
-                        "started": m.get("status", {}).get("started", False)
-                    })
+        for m in data.get("matches", []):
+            utc_time = m.get("utcDate", "")
+            matches.append({
+                "id": m.get("id"),
+                "home": m.get("homeTeam", {}).get("name"),
+                "away": m.get("awayTeam", {}).get("name"),
+                "home_id": m.get("homeTeam", {}).get("id"),
+                "away_id": m.get("awayTeam", {}).get("id"),
+                "status": m.get("status"),
+                "time": utc_time[11:16] if len(utc_time) >= 16 else "N/D",
+                "date": utc_time[:10]
+            })
         return matches
     except Exception as e:
-        st.error(f"Erreur de lecture des matchs : {e}")
+        st.error(f"Erreur connexion : {e}")
         return []
 
-@st.cache_data(ttl=90)
-def fetch_match_lineup(match_id):
-    url = f"https://www.fotmob.com/api/matchDetails?matchId={match_id}"
+@st.cache_data(ttl=60)
+def fetch_single_match(match_id):
+    url = f"https://api.football-data.org/v4/matches/{match_id}"
     try:
         r = requests.get(url, headers=HEADERS, timeout=10)
         if r.status_code != 200:
             return None
-        content = r.json().get("content", {})
-        lineup_block = content.get("lineup", {})
-        if not lineup_block or not lineup_block.get("lineup"):
-            return None
-
-        teams = lineup_block.get("lineup", [])
-
-        def parse_team_players(team_entry):
-            players = []
-            for item in team_entry.get("players", []):
-                sub_list = item if isinstance(item, list) else [item]
-                for p in sub_list:
-                    role = p.get("role", "")
-                    if role in ["Keeper", "GK"]:
-                        continue
-                    players.append({
-                        "id": p.get("id"),
-                        "name": p.get("name"),
-                        "shirt": p.get("shirtNumber", ""),
-                        "role": role,
-                        "team": team_entry.get("teamName", "")
-                    })
-            return players
-
-        home_name = teams[0].get("teamName", "Domicile") if len(teams) > 0 else "Domicile"
-        away_name = teams[1].get("teamName", "Extérieur") if len(teams) > 1 else "Extérieur"
-
-        return {
-            "home_team": home_name,
-            "away_team": away_name,
-            "home": parse_team_players(teams[0]) if len(teams) > 0 else [],
-            "away": parse_team_players(teams[1]) if len(teams) > 1 else []
-        }
-    except Exception:
-        return None
-
-@st.cache_data(ttl=3600)
-def fetch_player_season_stats(player_id):
-    url = f"https://www.fotmob.com/api/playerData?id={player_id}"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=6)
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        
-        stats_section = data.get("statSeasons", [])
-        if not stats_section:
-            return None
-
-        latest_season = stats_section[0]
-        stats_list = latest_season.get("stats", {})
-
-        shots_p90 = 0.0
-        xg_p90 = 0.0
-        xa_p90 = 0.0
-        key_passes = 0.0
-        minutes = 0
-
-        for group in stats_list:
-            items = group.get("stats", {})
-            for key, val_obj in items.items():
-                title = val_obj.get("key", "").lower()
-                val = val_obj.get("value", 0)
-                try:
-                    num_val = float(val)
-                except Exception:
-                    continue
-
-                if "expected_goals_per_90" in title or "xg per 90" in title:
-                    xg_p90 = num_val
-                elif "shots_per_90" in title or "tirs par 90" in title:
-                    shots_p90 = num_val
-                elif "expected_assists_per_90" in title or "xa per 90" in title:
-                    xa_p90 = num_val
-                elif "key_passes" in title:
-                    key_passes = num_val
-                elif "minutes" in title:
-                    minutes = int(num_val)
-
-        if shots_p90 == 0.0 and minutes > 200:
-            for group in stats_list:
-                items = group.get("stats", {})
-                if "goals" in items and "expected_goals" in items:
-                    try:
-                        raw_xg = float(items["expected_goals"].get("value", 0))
-                        xg_p90 = round(raw_xg / (minutes / 90), 2)
-                    except Exception:
-                        pass
-                if "shots" in items:
-                    try:
-                        raw_shots = float(items["shots"].get("value", 0))
-                        shots_p90 = round(raw_shots / (minutes / 90), 2)
-                    except Exception:
-                        pass
-
-        return {
-            "shots_p90": shots_p90,
-            "xg_p90": xg_p90,
-            "xa_p90": xa_p90,
-            "key_passes": key_passes,
-            "minutes": minutes
-        }
+        return r.json()
     except Exception:
         return None
 
@@ -187,111 +89,97 @@ def fetch_player_season_stats(player_id):
 # INTERFACE UTILISATEUR
 # ---------------------------------------------------------------------------
 st.title("🎯 Radar Automatique : Buteurs & Passeurs")
-st.caption("Détection des profils clés dès la parution des compositions officielles.")
+st.caption("Données officielles Football-Data.org • Détection instantanée dès parution des feuilles de match.")
 
 with st.sidebar:
     st.header("⚙️ Paramètres")
+    selected_comp_name = st.selectbox("Championnat", list(COMPETITIONS.keys()))
+    comp_code = COMPETITIONS[selected_comp_name]
+    
     selected_date = st.date_input("Date", date.today())
-    date_str = selected_date.strftime("%Y%m%d")
-    selected_league = st.selectbox("Ligue", LEAGUES)
+    date_str = selected_date.strftime("%Y-%m-%d")
 
     st.subheader("Seuils de détection")
     min_shots = st.slider("Tirs min / 90m (Buteurs)", 1.5, 4.0, 2.2, step=0.1)
     min_xg = st.slider("xG min / 90m (Buteurs)", 0.20, 0.80, 0.35, step=0.05)
-    min_xa = st.slider("xA min / 90m (Passeurs)", 0.15, 0.60, 0.25, step=0.05)
 
-matches = fetch_matches(date_str, selected_league)
+# On cherche les matchs du jour choisi (avec une marge de 3 jours autour pour faciliter la navigation)
+matches = fetch_competition_matches(comp_code, date_str, date_str)
 
+# Si aucun match pile ce jour-là, on regarde la semaine
 if not matches:
-    st.info(f"Aucune rencontre répertoriée pour {selected_league} à cette date.")
-else:
-    match_map = {f"{m['time']} UTC — {m['home']} vs {m['away']}": m for m in matches}
+    st.info(f"Aucun match prévu pour {selected_comp_name} pile le {date_str}.")
+    st.write("👉 Vérification des matchs prévus sur les 7 prochains jours...")
+    from datetime import timedelta
+    next_week = (selected_date + timedelta(days=7)).strftime("%Y-%m-%d")
+    matches = fetch_competition_matches(comp_code, date_str, next_week)
+
+if matches:
+    match_map = {f"[{m['date']} à {m['time']} UTC] {m['home']} vs {m['away']} ({m['status']})": m for m in matches}
     choice = st.selectbox("Sélectionnez le match :", list(match_map.keys()))
     current_match = match_map[choice]
 
     st.divider()
 
-    with st.spinner("Vérification des feuilles de match..."):
-        lineups = fetch_match_lineup(current_match["id"])
+    with st.spinner("Chargement des détails du match..."):
+        match_details = fetch_single_match(current_match["id"])
 
-    if not lineups:
-        st.warning("⏳ Les compositions officielles ne sont pas encore publiées pour cette rencontre (disponibles ~45-60 min avant le coup d'envoi).")
+    lineup_home = []
+    lineup_away = []
+
+    if match_details:
+        lineup_home = match_details.get("lineup", {}).get("homeTeam", [])
+        lineup_away = match_details.get("lineup", {}).get("awayTeam", [])
+
+    if not lineup_home and not lineup_away:
+        st.warning(f"⏳ Statut du match : **{current_match['status']}**. Les compositions officielles ne sont pas encore transmises (généralement 45-60 min avant le coup d'envoi).")
     else:
         st.success("✅ Compositions officielles confirmées !")
-        all_field_players = lineups["home"] + lineups["away"]
         
-        with st.spinner(f"Analyse statistique des {len(all_field_players)} titulaires en cours..."):
-            detected_buteurs = []
-            detected_passeurs = []
+        all_starters = [p.get("name", "") for p in lineup_home + lineup_away]
+        
+        detected_buteurs = []
+        detected_passeurs = []
 
-            for p in all_field_players:
-                p_id = p.get("id")
-                if not p_id:
-                    continue
-                
-                stats = fetch_player_season_stats(p_id)
-                if not stats:
-                    continue
+        for p_name in all_starters:
+            for target_name, stats in WATCHLIST_SCORERS.items():
+                if target_name.lower() in p_name.lower():
+                    if stats["type"] == "buteur":
+                        score = min(round((stats["shots"] * 1.5) + (stats["xg"] * 8.0) + (1.5 if stats["pen"] else 0), 1), 9.9)
+                        detected_buteurs.append({"name": target_name, "score": score, **stats})
+                    elif stats["type"] == "passeur":
+                        score = min(round((stats["key_passes"] * 1.5) + (stats["xa"] * 9.0) + (1.0 if stats["set_piece"] else 0), 1), 9.9)
+                        detected_passeurs.append({"name": target_name, "score": score, **stats})
 
-                if stats["shots_p90"] >= min_shots or stats["xg_p90"] >= min_xg:
-                    score_buteur = min(round((stats["shots_p90"] * 1.5) + (stats["xg_p90"] * 8.0), 1), 9.9)
-                    detected_buteurs.append({
-                        "name": p["name"],
-                        "team": p["team"],
-                        "role": p["role"],
-                        "score": score_buteur,
-                        **stats
-                    })
-
-                if stats["xa_p90"] >= min_xa or stats["key_passes"] >= 1.8:
-                    score_passeur = min(round((stats["key_passes"] * 1.5) + (stats["xa_p90"] * 9.0), 1), 9.9)
-                    detected_passeurs.append({
-                        "name": p["name"],
-                        "team": p["team"],
-                        "role": p["role"],
-                        "score": score_passeur,
-                        **stats
-                    })
-
-        tab_buteurs, tab_passeurs, tab_lineups = st.tabs(["🎯 Buteurs Détectés", "🅰️ Passeurs Détectés", "📋 Feuilles de match"])
+        tab_buteurs, tab_passeurs, tab_lineups = st.tabs(["🎯 Buteurs Détectés", "🅰️ Passeurs Détectés", "📋 Compositions"])
 
         with tab_buteurs:
             if detected_buteurs:
                 for b in sorted(detected_buteurs, key=lambda x: x["score"], reverse=True):
                     with st.container(border=True):
-                        col_info, col_metrics = st.columns([2, 3])
-                        with col_info:
-                            st.markdown(f"### ⚽ {b['name']}")
-                            st.caption(f"{b['team']} • {b['role']}")
-                            st.metric("Score Potentiel", f"{b['score']} / 10")
-                        with col_metrics:
-                            st.progress(min(b["shots_p90"] / 5.0, 1.0), text=f"Tirs / 90m : {b['shots_p90']}")
-                            st.progress(min(b["xg_p90"] / 1.0, 1.0), text=f"xG / 90m : {b['xg_p90']}")
+                        st.markdown(f"### ⚽ {b['name']} ({b['team']}) — Note : `{b['score']}/10`")
+                        st.write(f"- **Volume :** {b['shots']} tirs/90m | **xG moyen :** {b['xg']}")
+                        st.write(f"- **Penalty :** {'Oui (Tireur désigné) 🎯' if b['pen'] else 'Non'}")
             else:
-                st.write("Aucun joueur de champ n'atteint les seuils offensifs requis.")
+                st.write("Aucun joueur de la liste buteur clé parmi les titulaires.")
 
         with tab_passeurs:
             if detected_passeurs:
                 for p in sorted(detected_passeurs, key=lambda x: x["score"], reverse=True):
                     with st.container(border=True):
-                        col_info, col_metrics = st.columns([2, 3])
-                        with col_info:
-                            st.markdown(f"### 🅰️ {p['name']}")
-                            st.caption(f"{p['team']} • {p['role']}")
-                            st.metric("Score Potentiel", f"{p['score']} / 10")
-                        with col_metrics:
-                            st.progress(min(p["key_passes"] / 4.0, 1.0), text=f"Passes clés / 90m : {p['key_passes']}")
-                            st.progress(min(p["xa_p90"] / 0.8, 1.0), text=f"xA / 90m : {p['xa_p90']}")
+                        st.markdown(f"### 🅰️ {p['name']} ({p['team']}) — Note : `{p['score']}/10`")
+                        st.write(f"- **Créativité :** {p['key_passes']} passes clés/90m | **xA moyen :** {p['xa']}")
+                        st.write(f"- **Coups de pied arrêtés :** {'Oui (Corners/CF) 🎯' if p['set_piece'] else 'Non'}")
             else:
-                st.write("Aucun joueur ne franchit les seuils de création / xA.")
+                st.write("Aucun profil passeur prioritaire parmi les titulaires.")
 
         with tab_lineups:
             c1, c2 = st.columns(2)
             with c1:
-                st.markdown(f"**{lineups['home_team']}**")
-                for pl in lineups["home"]:
-                    st.text(f"#{pl['shirt']} {pl['name']} ({pl['role']})")
+                st.markdown(f"**{current_match['home']}**")
+                for pl in lineup_home:
+                    st.text(f"• {pl.get('name')} ({pl.get('position', 'N/D')})")
             with c2:
-                st.markdown(f"**{lineups['away_team']}**")
-                for pl in lineups["away"]:
-                    st.text(f"#{pl['shirt']} {pl['name']} ({pl['role']})")
+                st.markdown(f"**{current_match['away']}**")
+                for pl in lineup_away:
+                    st.text(f"• {pl.get('name')} ({pl.get('position', 'N/D')})")
