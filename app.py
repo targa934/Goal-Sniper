@@ -85,7 +85,7 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                         continue
                     target.append({
                         "name": ath.get("displayName", ""),
-                        "jersey": entry.get("jersey", ""),
+                        "jersey": entry.get("jersey", "-"),
                         "pos": pos,
                         "starter": entry.get("starter", False)
                     })
@@ -110,7 +110,7 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                     continue
                 athletes.append({
                     "name": ath.get("displayName", ""),
-                    "jersey": ath.get("jersey", ""),
+                    "jersey": ath.get("jersey", "-"),
                     "pos": pos,
                     "starter": False
                 })
@@ -123,12 +123,11 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
 st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
 st.caption("Détection automatique des forces offensives sur les matchs à venir.")
 
-with st.sidebar:
-    st.header("⚙️ Compétition")
-    selected_league_label = st.selectbox("Ligue / Tournoi", list(LEAGUES.keys()))
-    league_code = LEAGUES[selected_league_label]
-    selected_date = st.date_input("Date cible", date.today())
-    mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
+st.sidebar.header("⚙️ Compétition")
+selected_league_label = st.sidebar.selectbox("Ligue / Tournoi", list(LEAGUES.keys()))
+league_code = LEAGUES[selected_league_label]
+selected_date = st.sidebar.date_input("Date cible", date.today())
+mode_recherche = st.sidebar.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
 
 if mode_recherche == "Jour sélectionné uniquement":
     date_param = selected_date.strftime("%Y%m%d")
@@ -177,30 +176,26 @@ else:
 
     tab_buteurs, tab_passeurs, tab_effectifs = st.tabs(["🎯 Buteurs Potentiels", "🅰️ Passeurs Potentiels", "📋 Effectifs Complets"])
 
-    with tab_buteurs:
-        if buteurs_potentiels:
-            cols = st.columns(2)
-            for idx, p in enumerate(buteurs_potentiels):
-                with cols[idx % 2]:
-                    with st.container(border=True):
-                        st.markdown(f"### ⚽ {p['name']}")
-                        st.caption(f"{p['team']} • Poste : `{p['pos']}` • #{p.get('jersey', 'N/D')}")
-                        if p.get("starter"):
-                            st.success("🟢 Titulaire confirmé")
-        else:
-            st.info("Aucun attaquant répertorié dans les données de match.")
+    tab_buteurs.write(f"**Attaquants détectés ({len(buteurs_potentiels)}) :**")
+    if buteurs_potentiels:
+        for p in buteurs_potentiels:
+            statut = "🟢 Titulaire" if p.get("starter") else "⚪ Remplaçant / Groupe"
+            tab_buteurs.info(f"⚽ **{p['name']}** (#{p.get('jersey')}) — Club : **{p['team']}** | Poste : `{p['pos']}` | {statut}")
+    else:
+        tab_buteurs.info("Aucun attaquant répertorié dans les données de match.")
 
-    with tab_passeurs:
-        if passeurs_potentiels:
-            cols = st.columns(2)
-            for idx, p in enumerate(passeurs_potentiels):
-                with cols[idx % 2]:
-                    with st.container(border=True):
-                        st.markdown(f"### 🅰️ {p['name']}")
-                        st.caption(f"{p['team']} • Poste : `{p['pos']}` • #{p.get('jersey', 'N/D')}")
-                        if p.get("starter"):
-                            st.success("🟢 Titulaire confirmé")
-        else:
-            st.info("Aucun milieu / ailier répertorié dans les données de match.")
+    tab_passeurs.write(f"**Milieux / Créateurs détectés ({len(passeurs_potentiels)}) :**")
+    if passeurs_potentiels:
+        for p in passeurs_potentiels:
+            statut = "🟢 Titulaire" if p.get("starter") else "⚪ Remplaçant / Groupe"
+            tab_passeurs.info(f"🅰️ **{p['name']}** (#{p.get('jersey')}) — Club : **{p['team']}** | Poste : `{p['pos']}` | {statut}")
+    else:
+        tab_passeurs.info("Aucun milieu répertorié dans les données de match.")
 
-    with
+    tab_effectifs.write(f"**{home_name}** :")
+    for p in home_players:
+        tab_effectifs.text(f"#{p.get('jersey', '-')} {p['name']} ({p.get('pos', 'N/D')})")
+
+    tab_effectifs.write(f"**{away_name}** :")
+    for p in away_players:
+        tab_effectifs.text(f"#{p.get('jersey', '-')} {p['name']} ({p.get('pos', 'N/D')})")
