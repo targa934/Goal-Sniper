@@ -111,3 +111,35 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
             if r.status_code == 200:
                 athletes = []
                 for ath in r.json().get("athletes", []):
+                    pos = ath.get("position", {}).get("abbreviation", "")
+                    if pos in ["G", "GK"]:
+                        continue
+                    athletes.append({
+                        "name": ath.get("displayName", ""),
+                        "jersey": ath.get("jersey", ""),
+                        "pos": pos,
+                        "starter": False
+                    })
+                return athletes
+        except Exception:
+            return []
+        return []
+
+    return get_roster(home_id), get_roster(away_id)
+
+st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
+st.caption("Détection automatique des forces offensives sur les matchs à venir.")
+
+with st.sidebar:
+    st.header("⚙️ Compétition")
+    selected_league_label = st.selectbox("Ligue / Tournoi", list(LEAGUES.keys()))
+    league_code = LEAGUES[selected_league_label]
+
+    selected_date = st.date_input("Date cible", date.today())
+    mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
+
+if mode_recherche == "Jour sélectionné uniquement":
+    date_param = selected_date.strftime("%Y%m%d")
+else:
+    d_start = (selected_date - timedelta(days=3)).strftime("%Y%m%d")
+    d_end = (selected_date + timedelta(days=3)).strftime("%
