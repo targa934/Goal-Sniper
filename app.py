@@ -82,45 +82,15 @@ def fetch_all_matches_for_date(date_str):
     return all_events
 
 def make_stats(name, pos):
-    val = sum(ord(c) for c in name)
+    val = sum(ord(c) for c in str(name))
+    p = str(pos).upper()
     fw_roles = ["F", "A", "FW", "CF", "ST", "W", "LW", "RW"]
     mf_roles = ["M", "MF", "CM", "AM", "DM"]
-    is_fw = any(r in pos for r in fw_roles)
-    is_mf = any(r in pos for r in mf_roles)
+    is_fw = any(r in p for r in fw_roles)
+    is_mf = any(r in p for r in mf_roles)
 
     if is_fw:
         goals = 3 + (val % 12)
         assists = 1 + (val % 6)
         mins = 70 + (val % 18)
-        category = "Attaquant"
-    elif is_mf:
-        goals = 1 + (val % 6)
-        assists = 2 + (val % 10)
-        mins = 74 + (val % 15)
-        category = "Milieu"
-    else:
-        goals = val % 3
-        assists = val % 4
-        mins = 65 + (val % 24)
-        category = "Défenseur"
-
-    pen_taker = ((val % 4) == 0) and (is_fw or is_mf)
-    return goals, assists, mins, category, pen_taker
-
-@st.cache_data(ttl=300)
-def fetch_players_for_match(league_code, event_id, home_id, away_id, home_name, away_name):
-    hp, ap = [], []
-    base_url = "https://site.api.espn.com/apis/site/v2/sports/soccer"
-
-    sum_url = f"{base_url}/{league_code}/summary?event={event_id}"
-    try:
-        r = requests.get(sum_url, headers=HEADERS, timeout=6)
-        if r.status_code == 200:
-            rosters = r.json().get("rosters", [])
-            for idx, t_rst in enumerate(rosters):
-                target = hp if idx == 0 else ap
-                for entry in t_rst.get("roster", []):
-                    ath = entry.get("athlete", {})
-                    pos_dict = entry.get("position")
-                    pos = "F"
-                    if isinstance(pos
+        category
