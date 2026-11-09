@@ -106,7 +106,7 @@ def get_headshot_url(ath):
         return h.get("href")
     ath_id = str(ath.get("id", ""))
     if ath_id:
-        return "https://a.espncdn.com/i/headshots/soccer/players/full/" + ath_id + ".png"
+        return "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/" + ath_id + ".png&w=350&h=254"
     return "https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=250&h=180"
 
 @st.cache_data(ttl=300)
@@ -266,6 +266,23 @@ else:
                     info_c.markdown("**" + p["name"] + "**" + badge)
                     info_c.caption("Club : **" + p["team"] + "** • #" + str(p.get("jersey", "-")) + " • Poste : `" + str(p.get("pos", "N/D")) + "`")
 
+                    g_cnt = p.get("goals", 0)
+                    a_cnt = p.get("assists", 0)
+                    m_cnt = str(p.get("avg_mins", 0)) + "m"
+
                     m1, m2, m3 = info_c.columns(3)
-                    m1.metric("⚽ Buts", p.get("goals", 0))
-                    m2.metric("🅰️ Passes", p.get("assists",
+                    m1.metric("⚽ Buts", g_cnt)
+                    m2.metric("🅰️ Passes", a_cnt)
+                    m3.metric("⏱️ Temps", m_cnt)
+
+    with tab_buteurs:
+        st.markdown(f"**Attaquants classés par buts ({len(buteurs)}) :**")
+        render_player_cards(buteurs)
+
+    with tab_passeurs:
+        st.markdown(f"**Milieux / Créateurs classés par passes ({len(passeurs)}) :**")
+        render_player_cards(passeurs)
+
+    with tab_effectifs:
+        st.markdown(f"**Tous les joueurs de champ ({len(all_field)}) :**")
+        render_player_cards(all_field)
