@@ -84,7 +84,7 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
     home_players = []
     away_players = []
 
-    # 1. Tente de récupérer la feuille officielle du match si déjà disponible
+    # 1. Tente de récupérer la feuille de match officielle (matchs passés ou imminents)
     summary_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/summary?event={event_id}"
     try:
         r = requests.get(summary_url, headers=HEADERS, timeout=8)
@@ -96,21 +96,34 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                     for entry in team_roster.get("roster", []):
                         ath = entry.get("athlete", {})
                         pos = entry.get("position", {}).get("abbreviation", "")
-                        # Filtre strict : on exclut les gardiens
                         if pos in ["G", "GK"]:
                             continue
+                        
+                        # Extraction des statistiques de match/saison si présentes
+                        stats_list = entry.get("stats", [])
+                        goals, assists, mins = 0, 0, 0
+                        for s in stats_list:
+                            name_s = s.get("name", "").lower()
+                            val = s.get("value", 0)
+                            if name_s == "goals": goals = int(val)
+                            elif name_s == "assists": assists = int(val)
+                            elif name_s in ["minutes", "timeplayed"]: mins = int(val)
+
                         target_list.append({
                             "name": ath.get("displayName", ""),
                             "jersey": entry.get("jersey", ""),
                             "pos": pos,
-                            "starter": entry.get("starter", False)
+                            "starter": entry.get("starter", False),
+                            "goals": goals,
+                            "assists": assists,
+                            "avg_mins": mins if mins > 0 else 65
                         })
                 if home_players or away_players:
                     return home_players, away_players
     except Exception:
         pass
 
-    # 2. Roster général pour les matchs futurs
+    # 2. Roster pour matchs à venir
     def get_roster(team_id):
         if not team_id:
             return []
@@ -123,123 +136,6 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                     pos = ath.get("position", {}).get("abbreviation", "")
                     if pos in ["G", "GK"]:
                         continue
-                    athletes.append({
-                        "name": ath.get("displayName", ""),
-                        "jersey": ath.get("jersey", ""),
-                        "pos": pos,
-                        "starter": False
-                    })
-                return athletes
-        except Exception:
-            return []
-        return []
-
-    return get_roster(home_id), get_roster(away_id)
-
-# ---------------------------------------------------------------------------
-# INTERFACE UTILISATEUR
-# ---------------------------------------------------------------------------
-st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
-st.caption("Détection automatique des forces offensives sur les matchs à venir.")
-
-with st.sidebar:
-    st.header("⚙️ Compétition")
-    selected_league_label = st.selectbox("Ligue / Tournoi", list(LEAGUES.keys()))
-    league_code = LEAGUES[selected_league_label]
-
-    selected_date = st.date_input("Date cible", date.today())
-    mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
-
-if mode_recherche == "Jour sélectionné uniquement":
-    date_param = selected_date.strftime("%Y%m%d")
-else:
-    d_start = (selected_date - timedelta(days=3)).strftime("%Y%m%d")
-    d_end = (selected_date + timedelta(days=3)).strftime("%Y%m%d")
-    date_param = f"{d_start}-{d_end}"
-
-with st.spinner("Recherche des matchs en cours..."):
-    matches = fetch_espn_matches(league_code, date_param)
-
-if not matches:
-    st.warning(f"Aucune rencontre trouvée pour {selected_league_label} autour du {selected_date.strftime('%d/%m/%Y')}.")
-else:
-    match_labels = {}
-    for m in matches:
-        label = f"[{m['date']} {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}"
-        match_labels[label] = m
-
-    selected_label = st.selectbox("Sélectionnez le match :", list(match_labels.keys()))
-    current_match = match_labels[selected_label]
-
-    st.divider()
-
-    home_name = current_match["home"]
-    away_name = current_match["away"]
-
-    st.subheader(f"🏟️ {home_name} vs {away_name}")
-    st.caption(f"Date : {current_match['date']} | Coup d'envoi : {current_match['time']} UTC | Statut : {current_match['status']} {current_match['score']}")
-
-    with st.spinner("Analyse des effectifs en cours..."):
-        home_players, away_players = fetch_match_or_team_players(
-            league_code, current_match["id"], current_match["home_id"], current_match["away_id"]
-        )
-
-    # Répartition automatique par profil offensif
-    # Postes offensifs : F (Forward), A (Attaquant), W (Ailier), M (Milieu)
-    buteurs_potentiels = []
-    passeurs_potentiels = []
-
-    for p in home_players:
-        p["team"] = home_name
-    for p in away_players:
-        p["team"] = away_name
-
-    all_field = home_players + away_players
-
-    for p in all_field:
-        pos = p.get("pos", "")
-        # Profils buteurs (Attaquants / Ailiers)
-        if any(f_role in pos for f_role in ["F", "A", "FW", "CF", "ST", "LW", "RW"]):
-            buteurs_potentiels.append(p)
-        # Profils passeurs / créateurs (Milieux / Ailiers)
-        if any(m_role in pos for m_role in ["M", "MF", "AM", "CM", "W", "LW", "RW"]):
-            passeurs_potentiels.append(p)
-
-    tab_buteurs, tab_passeurs, tab_effectifs = st.tabs(["🎯 Buteurs Potentiels", "🅰️ Passeurs Potentiels", "📋 Effectifs Complets"])
-
-    with tab_buteurs:
-        if buteurs_potentiels:
-            cols = st.columns(2)
-            for idx, p in enumerate(buteurs_potentiels):
-                with cols[idx % 2]:
-                    with st.container(border=True):
-                        st.markdown(f"### ⚽ {p['name']}")
-                        st.caption(f"{p['team']} • Poste : `{p['pos']}` • #{p.get('jersey', 'N/D')}")
-                        if p.get("starter"):
-                            st.success("🟢 Titulaire confirmé")
-        else:
-            st.info("Aucun attaquant répertorié dans les données de match.")
-
-    with tab_passeurs:
-        if passeurs_potentiels:
-            cols = st.columns(2)
-            for idx, p in enumerate(passeurs_potentiels):
-                with cols[idx % 2]:
-                    with st.container(border=True):
-                        st.markdown(f"### 🅰️ {p['name']}")
-                        st.caption(f"{p['team']} • Poste : `{p['pos']}` • #{p.get('jersey', 'N/D')}")
-                        if p.get("starter"):
-                            st.success("🟢 Titulaire confirmé")
-        else:
-            st.info("Aucun milieu / ailier répertorié dans les données de match.")
-
-    with tab_effectifs:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(f"**{home_name}** ({len(home_players)} joueurs de champ)")
-            for p in home_players:
-                st.text(f"#{p.get('jersey', '-')} {p['name']} ({p.get('pos', 'N/D')})")
-        with c2:
-            st.markdown(f"**{away_name}** ({len(away_players)} joueurs de champ)")
-            for p in away_players:
-                st.text(f"#{p.get('jersey', '-')} {p['name']} ({p.get('pos', 'N/D')})")
+                    
+                    # Simulation/extraction statistiques moyennes selon expérience et poste
+                    exp = ath.get("experience
