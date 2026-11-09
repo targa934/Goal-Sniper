@@ -140,5 +140,7 @@ else:
 if not matches:
     st.info(f"Aucune rencontre trouvée pour {selected_league_label} autour du {selected_date.strftime('%d/%m/%Y')}.")
 else:
-    match_labels = {
-        f"[{m['date']} à {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}
+    match_labels = {}
+    for m in matches:
+        label = f"[{m['date']} {m['time']}] {m['home']} vs {m['away']} {m['score']} ({m['status']})"
+        match_labels[label] = m
