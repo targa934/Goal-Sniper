@@ -12,9 +12,9 @@ HEADERS = {
 }
 
 LEAGUES = {
+    "Liga (Espagne)": "esp.1",
     "Ligue 1 (France)": "fra.1",
     "Premier League (Angleterre)": "eng.1",
-    "Liga (Espagne)": "esp.1",
     "Serie A (Italie)": "ita.1",
     "Bundesliga (Allemagne)": "ger.1",
     "Liga Portugal": "por.1",
@@ -29,7 +29,7 @@ LEAGUES = {
 }
 
 # ---------------------------------------------------------------------------
-# APPEL API ESPN (CALENDRIER ET SCORES)
+# FONCTIONS API ESPN ROBUSTES
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=180)
 def fetch_espn_matches(league_code, date_param):
@@ -79,36 +79,69 @@ def fetch_espn_matches(league_code, date_param):
     except Exception:
         return []
 
-@st.cache_data(ttl=3600)
-def fetch_team_athletes(team_id):
-    """Récupère l'effectif officiel complet et les stats d'un club via ESPN"""
-    if not team_id:
-        return []
-    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/teams/{team_id}/roster"
+@st.cache_data(ttl=300)
+def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
+    """
+    Récupère les joueurs :
+    1. Soit via le résumé du match si la feuille est disponible (match passé ou en direct)
+    2. Soit via le roster officiel de la ligue si c'est un match futur
+    """
+    home_players = []
+    away_players = []
+
+    # Tentative 1 : Feuille de match directe (idéal pour compos et matchs joués)
+    summary_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/summary?event={event_id}"
     try:
-        r = requests.get(url, headers=HEADERS, timeout=8)
-        if r.status_code != 200:
-            return []
-        data = r.json()
-        athletes = []
-        for ath in data.get("athletes", []):
-            pos = ath.get("position", {}).get("abbreviation", "")
-            if pos != "G":  # On ignore les gardiens
-                athletes.append({
-                    "name": ath.get("displayName", ""),
-                    "jersey": ath.get("jersey", ""),
-                    "pos": pos,
-                    "exp": ath.get("experience", {}).get("years", 0)
-                })
-        return athletes
+        r = requests.get(summary_url, headers=HEADERS, timeout=8)
+        if r.status_code == 200:
+            rosters = r.json().get("rosters", [])
+            if rosters:
+                for idx, team_roster in enumerate(rosters):
+                    target_list = home_players if idx == 0 else away_players
+                    for entry in team_roster.get("roster", []):
+                        ath = entry.get("athlete", {})
+                        pos = entry.get("position", {}).get("abbreviation", "")
+                        is_starter = entry.get("starter", False)
+                        target_list.append({
+                            "name": ath.get("displayName", ""),
+                            "jersey": entry.get("jersey", ""),
+                            "pos": pos,
+                            "starter": is_starter
+                        })
+                if home_players or away_players:
+                    return home_players, away_players
     except Exception:
+        pass
+
+    # Tentative 2 : Roster général du club pour les matchs futurs
+    def get_roster(team_id):
+        if not team_id:
+            return []
+        url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/teams/{team_id}/roster"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=8)
+            if r.status_code == 200:
+                athletes = []
+                for ath in r.json().get("athletes", []):
+                    pos = ath.get("position", {}).get("abbreviation", "")
+                    athletes.append({
+                        "name": ath.get("displayName", ""),
+                        "jersey": ath.get("jersey", ""),
+                        "pos": pos,
+                        "starter": False
+                    })
+                return athletes
+        except Exception:
+            return []
         return []
+
+    return get_roster(home_id), get_roster(away_id)
 
 # ---------------------------------------------------------------------------
 # INTERFACE
 # ---------------------------------------------------------------------------
 st.title("🎯 Radar Prédictif Multi-Ligues")
-st.caption("Données automatisées : analyse des effectifs et détection sans maintenance manuelle.")
+st.caption("Données en direct : feuilles de match officielles et effectifs réels.")
 
 with st.sidebar:
     st.header("⚙️ Compétition")
@@ -118,7 +151,6 @@ with st.sidebar:
     selected_date = st.date_input("Date cible", date.today())
     mode_recherche = st.radio("Portée :", ["Semaine complète (+/- 3 jours)", "Jour sélectionné uniquement"])
 
-# Calcul de la plage de dates
 if mode_recherche == "Jour sélectionné uniquement":
     date_param = selected_date.strftime("%Y%m%d")
 else:
@@ -134,7 +166,7 @@ if not matches:
 else:
     match_labels = {}
     for m in matches:
-        label = f"[{m['date']} à {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}"
+        label = f"[{m['date']} {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}"
         match_labels[label] = m
 
     selected_label = st.selectbox("Sélectionnez le match :", list(match_labels.keys()))
@@ -148,25 +180,35 @@ else:
     st.subheader(f"🏟️ {home_name} vs {away_name}")
     st.caption(f"Date : {current_match['date']} | Coup d'envoi : {current_match['time']} UTC | Statut : {current_match['status']} {current_match['score']}")
 
-    # Chargement dynamique des effectifs
-    with st.spinner("Récupération automatique des effectifs des deux équipes..."):
-        home_players = fetch_team_athletes(current_match["home_id"])
-        away_players = fetch_team_athletes(current_match["away_id"])
+    with st.spinner("Chargement des effectifs et feuilles de match..."):
+        home_players, away_players = fetch_match_or_team_players(
+            league_code, current_match["id"], current_match["home_id"], current_match["away_id"]
+        )
 
-    tab_home, tab_away = st.tabs([f"👕 Effectif {home_name}", f"👕 Effectif {away_name}"])
+    tab_home, tab_away = st.tabs([f"👕 {home_name}", f"👕 {away_name}"])
+
+    def display_players(players_list):
+        if not players_list:
+            st.info("Données d'effectif temporairement indisponibles.")
+            return
+
+        starters = [p for p in players_list if p.get("starter")]
+        subs_or_all = [p for p in players_list if not p.get("starter")]
+
+        if starters:
+            st.markdown("#### 🟢 11 Titulaires")
+            for p in starters:
+                with st.container(border=True):
+                    st.markdown(f"**#{p['jersey']} {p['name']}** — Poste : `{p['pos']}`")
+
+        if subs_or_all:
+            st.markdown("#### ⚪ Remplaçants / Effectif")
+            for p in subs_or_all:
+                with st.container(border=True):
+                    st.markdown(f"**#{p['jersey']} {p['name']}** — Poste : `{p['pos']}`")
 
     with tab_home:
-        if home_players:
-            for p in home_players:
-                with st.container(border=True):
-                    st.markdown(f"**#{p['jersey']} {p['name']}** — Poste : `{p['pos']}`")
-        else:
-            st.info("Données d'effectif non disponibles pour cette sélection/équipe.")
+        display_players(home_players)
 
     with tab_away:
-        if away_players:
-            for p in away_players:
-                with st.container(border=True):
-                    st.markdown(f"**#{p['jersey']} {p['name']}** — Poste : `{p['pos']}`")
-        else:
-            st.info("Données d'effectif non disponibles pour cette sélection/équipe.")
+        display_players(away_players)
