@@ -3,7 +3,7 @@ import requests
 from datetime import datetime, date, timedelta
 
 # ---------------------------------------------------------------------------
-# CONFIGURATION
+# CONFIGURATION DE LA PAGE
 # ---------------------------------------------------------------------------
 st.set_page_config(page_title="Radar Buteurs & Passeurs", page_icon="🎯", layout="wide")
 
@@ -12,16 +12,16 @@ HEADERS = {
 }
 
 LEAGUES = {
-    "Liga (Espagne)": "esp.1",
+    "Ligue des Nations (UEFA)": "uefa.nations",
     "Ligue 1 (France)": "fra.1",
     "Premier League (Angleterre)": "eng.1",
+    "Liga (Espagne)": "esp.1",
     "Serie A (Italie)": "ita.1",
     "Bundesliga (Allemagne)": "ger.1",
     "Liga Portugal": "por.1",
     "Eredivisie (Pays-Bas)": "ned.1",
     "Ligue des Champions": "uefa.champions",
     "Ligue Europa": "uefa.europa",
-    "Ligue des Nations (UEFA)": "uefa.nations",
     "Brésil (Brasileirão)": "bra.1",
     "Japon (J1 League)": "jpn.1",
     "Chine (Super League)": "chn.1",
@@ -29,7 +29,7 @@ LEAGUES = {
 }
 
 # ---------------------------------------------------------------------------
-# FONCTIONS API ESPN ROBUSTES
+# APPELS API ESPN
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=180)
 def fetch_espn_matches(league_code, date_param):
@@ -81,15 +81,10 @@ def fetch_espn_matches(league_code, date_param):
 
 @st.cache_data(ttl=300)
 def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
-    """
-    Récupère les joueurs :
-    1. Soit via le résumé du match si la feuille est disponible (match passé ou en direct)
-    2. Soit via le roster officiel de la ligue si c'est un match futur
-    """
     home_players = []
     away_players = []
 
-    # Tentative 1 : Feuille de match directe (idéal pour compos et matchs joués)
+    # 1. Tente de récupérer la feuille officielle du match si déjà disponible
     summary_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/summary?event={event_id}"
     try:
         r = requests.get(summary_url, headers=HEADERS, timeout=8)
@@ -101,19 +96,21 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                     for entry in team_roster.get("roster", []):
                         ath = entry.get("athlete", {})
                         pos = entry.get("position", {}).get("abbreviation", "")
-                        is_starter = entry.get("starter", False)
+                        # Filtre strict : on exclut les gardiens
+                        if pos in ["G", "GK"]:
+                            continue
                         target_list.append({
                             "name": ath.get("displayName", ""),
                             "jersey": entry.get("jersey", ""),
                             "pos": pos,
-                            "starter": is_starter
+                            "starter": entry.get("starter", False)
                         })
                 if home_players or away_players:
                     return home_players, away_players
     except Exception:
         pass
 
-    # Tentative 2 : Roster général du club pour les matchs futurs
+    # 2. Roster général pour les matchs futurs
     def get_roster(team_id):
         if not team_id:
             return []
@@ -124,6 +121,8 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                 athletes = []
                 for ath in r.json().get("athletes", []):
                     pos = ath.get("position", {}).get("abbreviation", "")
+                    if pos in ["G", "GK"]:
+                        continue
                     athletes.append({
                         "name": ath.get("displayName", ""),
                         "jersey": ath.get("jersey", ""),
@@ -138,10 +137,10 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
     return get_roster(home_id), get_roster(away_id)
 
 # ---------------------------------------------------------------------------
-# INTERFACE
+# INTERFACE UTILISATEUR
 # ---------------------------------------------------------------------------
-st.title("🎯 Radar Prédictif Multi-Ligues")
-st.caption("Données en direct : feuilles de match officielles et effectifs réels.")
+st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
+st.caption("Détection automatique des forces offensives sur les matchs à venir.")
 
 with st.sidebar:
     st.header("⚙️ Compétition")
@@ -149,7 +148,7 @@ with st.sidebar:
     league_code = LEAGUES[selected_league_label]
 
     selected_date = st.date_input("Date cible", date.today())
-    mode_recherche = st.radio("Portée :", ["Semaine complète (+/- 3 jours)", "Jour sélectionné uniquement"])
+    mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
 
 if mode_recherche == "Jour sélectionné uniquement":
     date_param = selected_date.strftime("%Y%m%d")
@@ -180,35 +179,67 @@ else:
     st.subheader(f"🏟️ {home_name} vs {away_name}")
     st.caption(f"Date : {current_match['date']} | Coup d'envoi : {current_match['time']} UTC | Statut : {current_match['status']} {current_match['score']}")
 
-    with st.spinner("Chargement des effectifs et feuilles de match..."):
+    with st.spinner("Analyse des effectifs en cours..."):
         home_players, away_players = fetch_match_or_team_players(
             league_code, current_match["id"], current_match["home_id"], current_match["away_id"]
         )
 
-    tab_home, tab_away = st.tabs([f"👕 {home_name}", f"👕 {away_name}"])
+    # Répartition automatique par profil offensif
+    # Postes offensifs : F (Forward), A (Attaquant), W (Ailier), M (Milieu)
+    buteurs_potentiels = []
+    passeurs_potentiels = []
 
-    def display_players(players_list):
-        if not players_list:
-            st.info("Données d'effectif temporairement indisponibles.")
-            return
+    for p in home_players:
+        p["team"] = home_name
+    for p in away_players:
+        p["team"] = away_name
 
-        starters = [p for p in players_list if p.get("starter")]
-        subs_or_all = [p for p in players_list if not p.get("starter")]
+    all_field = home_players + away_players
 
-        if starters:
-            st.markdown("#### 🟢 11 Titulaires")
-            for p in starters:
-                with st.container(border=True):
-                    st.markdown(f"**#{p['jersey']} {p['name']}** — Poste : `{p['pos']}`")
+    for p in all_field:
+        pos = p.get("pos", "")
+        # Profils buteurs (Attaquants / Ailiers)
+        if any(f_role in pos for f_role in ["F", "A", "FW", "CF", "ST", "LW", "RW"]):
+            buteurs_potentiels.append(p)
+        # Profils passeurs / créateurs (Milieux / Ailiers)
+        if any(m_role in pos for m_role in ["M", "MF", "AM", "CM", "W", "LW", "RW"]):
+            passeurs_potentiels.append(p)
 
-        if subs_or_all:
-            st.markdown("#### ⚪ Remplaçants / Effectif")
-            for p in subs_or_all:
-                with st.container(border=True):
-                    st.markdown(f"**#{p['jersey']} {p['name']}** — Poste : `{p['pos']}`")
+    tab_buteurs, tab_passeurs, tab_effectifs = st.tabs(["🎯 Buteurs Potentiels", "🅰️ Passeurs Potentiels", "📋 Effectifs Complets"])
 
-    with tab_home:
-        display_players(home_players)
+    with tab_buteurs:
+        if buteurs_potentiels:
+            cols = st.columns(2)
+            for idx, p in enumerate(buteurs_potentiels):
+                with cols[idx % 2]:
+                    with st.container(border=True):
+                        st.markdown(f"### ⚽ {p['name']}")
+                        st.caption(f"{p['team']} • Poste : `{p['pos']}` • #{p.get('jersey', 'N/D')}")
+                        if p.get("starter"):
+                            st.success("🟢 Titulaire confirmé")
+        else:
+            st.info("Aucun attaquant répertorié dans les données de match.")
 
-    with tab_away:
-        display_players(away_players)
+    with tab_passeurs:
+        if passeurs_potentiels:
+            cols = st.columns(2)
+            for idx, p in enumerate(passeurs_potentiels):
+                with cols[idx % 2]:
+                    with st.container(border=True):
+                        st.markdown(f"### 🅰️ {p['name']}")
+                        st.caption(f"{p['team']} • Poste : `{p['pos']}` • #{p.get('jersey', 'N/D')}")
+                        if p.get("starter"):
+                            st.success("🟢 Titulaire confirmé")
+        else:
+            st.info("Aucun milieu / ailier répertorié dans les données de match.")
+
+    with tab_effectifs:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"**{home_name}** ({len(home_players)} joueurs de champ)")
+            for p in home_players:
+                st.text(f"#{p.get('jersey', '-')} {p['name']} ({p.get('pos', 'N/D')})")
+        with c2:
+            st.markdown(f"**{away_name}** ({len(away_players)} joueurs de champ)")
+            for p in away_players:
+                st.text(f"#{p.get('jersey', '-')} {p['name']} ({p.get('pos', 'N/D')})")
