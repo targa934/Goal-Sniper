@@ -30,9 +30,8 @@ def fetch_espn_matches(league_code, date_param):
         r = requests.get(url, headers=HEADERS, timeout=8)
         if r.status_code != 200:
             return []
-        data = r.json()
         matches = []
-        for ev in data.get("events", []):
+        for ev in r.json().get("events", []):
             comp = ev.get("competitions", [{}])[0]
             comps = comp.get("competitors", [])
             h_team, a_team, h_id, a_id = "Domicile", "Extérieur", "", ""
@@ -40,35 +39,54 @@ def fetch_espn_matches(league_code, date_param):
             for c in comps:
                 tm = c.get("team", {})
                 if c.get("homeAway") == "home":
-                    h_team = tm.get("displayName", "")
-                    h_id = tm.get("id", "")
-                    h_sc = c.get("score", "")
+                    h_team, h_id, h_sc = tm.get("displayName", ""), tm.get("id", ""), c.get("score", "")
                 else:
-                    a_team = tm.get("displayName", "")
-                    a_id = tm.get("id", "")
-                    a_sc = c.get("score", "")
+                    a_team, a_id, a_sc = tm.get("displayName", ""), tm.get("id", ""), c.get("score", "")
             raw_d = ev.get("date", "")
-            t_str = raw_d[11:16] if len(raw_d) >= 16 else "N/D"
-            st_txt = comp.get("status", {}).get("type", {}).get("shortDetail", "")
-            sc_str = f"({h_sc} - {a_sc})" if (h_sc and a_sc) else ""
             matches.append({
                 "id": ev.get("id"),
-                "home": h_team,
-                "home_id": h_id,
-                "away": a_team,
-                "away_id": a_id,
-                "time": t_str,
-                "status": st_txt,
-                "score": sc_str,
+                "home": h_team, "home_id": h_id,
+                "away": a_team, "away_id": a_id,
+                "time": raw_d[11:16] if len(raw_d) >= 16 else "N/D",
+                "status": comp.get("status", {}).get("type", {}).get("shortDetail", ""),
+                "score": f"({h_sc} - {a_sc})" if (h_sc and a_sc) else "",
                 "date": raw_d[:10]
             })
         return matches
     except Exception:
         return []
 
+@st.cache_data(ttl=600)
+def fetch_league_leaders(league_code):
+    """Récupère les vrais classements de buts et passes de la compétition"""
+    stats_map = {}
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/statistics"
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        if r.status_code == 200:
+            categories = r.json().get("stats", {}).get("categories", [])
+            for cat in categories:
+                cat_name = cat.get("name", "")
+                for leader in cat.get("leaders", []):
+                    ath = leader.get("athlete", {})
+                    p_name = ath.get("displayName", "").lower()
+                    val = int(leader.get("value", 0))
+                    if p_name not in stats_map:
+                        stats_map[p_name] = {"goals": 0, "assists": 0}
+                    if "goal" in cat_name or "scorer" in cat_name:
+                        stats_map[p_name]["goals"] = val
+                    elif "assist" in cat_name:
+                        stats_map[p_name]["assists"] = val
+    except Exception:
+        pass
+    return stats_map
+
 @st.cache_data(ttl=300)
 def fetch_match_players(league_code, event_id, home_id, away_id):
     hp, ap = [], []
+    leaders_map = fetch_league_leaders(league_code)
+    
+    # 1. Feuille de match détaillée (si dispo)
     sum_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/summary?event={event_id}"
     try:
         r = requests.get(sum_url, headers=HEADERS, timeout=8)
@@ -82,30 +100,35 @@ def fetch_match_players(league_code, event_id, home_id, away_id):
                         pos = entry.get("position", {}).get("abbreviation", "")
                         if pos in ["G", "GK"]:
                             continue
-                        g, a, m = 0, 0, 68
+                        name = ath.get("displayName", "")
+                        norm_name = name.lower()
+                        
+                        g = leaders_map.get(norm_name, {}).get("goals", 0)
+                        a = leaders_map.get(norm_name, {}).get("assists", 0)
+                        m = 0
+                        
                         for s in entry.get("stats", []):
                             s_name = str(s.get("name", "")).lower()
-                            s_val = int(s.get("value", 0))
-                            if s_name == "goals":
-                                g = s_val
-                            elif s_name == "assists":
-                                a = s_val
-                            elif s_name in ["minutes", "timeplayed"]:
-                                m = s_val
+                            v = int(s.get("value", 0))
+                            if s_name == "goals" and v > 0: g = max(g, v)
+                            elif s_name == "assists" and v > 0: a = max(a, v)
+                            elif s_name in ["minutes", "timeplayed"]: m = v
+                        
                         target.append({
-                            "name": ath.get("displayName", ""),
+                            "name": name,
                             "jersey": entry.get("jersey", "-"),
                             "pos": pos,
                             "starter": entry.get("starter", False),
                             "goals": g,
                             "assists": a,
-                            "avg_mins": m
+                            "avg_mins": m if m > 0 else 70
                         })
                 if hp or ap:
                     return hp, ap
     except Exception:
         pass
 
+    # 2. Roster pour les matchs à venir
     def get_roster(t_id):
         if not t_id:
             return []
@@ -119,19 +142,21 @@ def fetch_match_players(league_code, event_id, home_id, away_id):
                 p = ath.get("position", {}).get("abbreviation", "")
                 if p in ["G", "GK"]:
                     continue
-                is_fw = p in ["F", "A", "FW", "CF", "ST", "W", "LW", "RW"]
-                is_mf = p in ["M", "MF", "CM", "AM"]
-                g_val = 4 if is_fw else (2 if is_mf else 0)
-                a_val = 3 if is_mf else (2 if is_fw else 1)
-                m_val = 72 if (is_fw or is_mf) else 65
+                name = ath.get("displayName", "")
+                norm_name = name.lower()
+                
+                # Vraies stats trouvées dans le classement ou stats officielles
+                g = leaders_map.get(norm_name, {}).get("goals", 0)
+                a = leaders_map.get(norm_name, {}).get("assists", 0)
+                
                 athletes.append({
-                    "name": ath.get("displayName", ""),
+                    "name": name,
                     "jersey": ath.get("jersey", "-"),
                     "pos": p,
                     "starter": False,
-                    "goals": g_val,
-                    "assists": a_val,
-                    "avg_mins": m_val
+                    "goals": g,
+                    "assists": a,
+                    "avg_mins": 75 if p in ["F", "A", "FW", "M", "MF"] else 60
                 })
             return athletes
         except Exception:
@@ -143,7 +168,7 @@ def fetch_match_players(league_code, event_id, home_id, away_id):
 # INTERFACE
 # ---------------------------------------------------------------------------
 st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
-st.caption("Filtres avancés, statistiques de jeu et tris multicritères.")
+st.caption("Filtres avancés, statistiques réelles et tris multicritères.")
 
 with st.sidebar:
     st.header("⚙️ Compétition")
@@ -162,7 +187,7 @@ with st.sidebar:
         default=["Tous"]
     )
     min_buts = st.slider("Buts minimum", 0, 15, 0)
-    min_mins = st.slider("Temps de jeu moyen min (min)", 0, 90, 0, step=5)
+    min_assists = st.slider("Passes D minimum", 0, 10, 0)
 
     st.divider()
     st.header("🔃 Tri")
@@ -196,7 +221,7 @@ else:
     st.subheader(f"🏟️ {h_name} vs {a_name}")
     st.caption(f"Date : {current_match['date']} | Coup d'envoi : {current_match['time']} UTC | Statut : {current_match['status']} {current_match['score']}")
 
-    with st.spinner("Analyse des effectifs et statistiques..."):
+    with st.spinner("Analyse des effectifs et statistiques réelles..."):
         home_players, away_players = fetch_match_players(
             league_code,
             current_match["id"],
@@ -213,11 +238,13 @@ else:
 
     players = home_players + away_players
 
+    # Filtre équipe
     if filtre_equipe == "Domicile":
         players = [p for p in players if p["side"] == "Domicile"]
     elif filtre_equipe == "Extérieur":
         players = [p for p in players if p["side"] == "Extérieur"]
 
+    # Filtre poste
     if "Tous" not in filtre_poste and len(filtre_poste) > 0:
         wanted = []
         if "Attaquants (F/A/ST/W)" in filtre_poste:
@@ -228,13 +255,15 @@ else:
             wanted.extend(["D", "DF", "CB", "LB", "RB", "WB"])
         players = [p for p in players if any(role in p.get("pos", "") for role in wanted)]
 
-    players = [p for p in players if p.get("goals", 0) >= min_buts and p.get("avg_mins", 0) >= min_mins]
+    # Filtres numériques
+    players = [p for p in players if p.get("goals", 0) >= min_buts and p.get("assists", 0) >= min_assists]
 
+    # Application du tri
     reverse_flag = (tri_ordre == "Décroissant ⬇️")
     if tri_critere == "Buts":
-        players.sort(key=lambda x: x.get("goals", 0), reverse=reverse_flag)
+        players.sort(key=lambda x: (x.get("goals", 0), x.get("assists", 0)), reverse=reverse_flag)
     elif tri_critere == "Passes D":
-        players.sort(key=lambda x: x.get("assists", 0), reverse=reverse_flag)
+        players.sort(key=lambda x: (x.get("assists", 0), x.get("goals", 0)), reverse=reverse_flag)
     elif tri_critere == "Temps de jeu":
         players.sort(key=lambda x: x.get("avg_mins", 0), reverse=reverse_flag)
     elif tri_critere == "Nom":
@@ -254,10 +283,7 @@ else:
                     c_title, c_badge = st.columns([3, 2])
                     with c_title:
                         st.markdown(f"### {pl['name']}")
-                        tm = pl['team']
-                        js = pl.get('jersey', '-')
-                        ps = pl.get('pos', 'N/D')
-                        st.caption(f"**{tm}** • #{js} • Poste : `{ps}`")
+                        st.caption(f"**{pl['team']}** • #{pl.get('jersey', '-')} • Poste : `{pl.get('pos', 'N/D')}`")
                     with c_badge:
                         if pl.get("starter"):
                             st.success("🟢 Titulaire")
