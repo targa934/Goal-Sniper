@@ -60,13 +60,16 @@ PLAYERS_DATABASE = [
 ]
 
 # ---------------------------------------------------------------------------
-# APPEL API ESPN (CALENDRIER ILLIMITÉ PAR DATE)
+# APPEL API ESPN UNIQUE (PLAGE DE DATES DIRECTE)
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=180)
-def fetch_espn_matches_by_date(league_code, date_str):
-    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/scoreboard?dates={date_str}"
+def fetch_espn_matches(league_code, date_param):
+    """
+    date_param peut être soit une date simple (YYYYMMDD) soit une plage (YYYYMMDD-YYYYMMDD)
+    """
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/scoreboard?dates={date_param}"
     try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
+        r = requests.get(url, headers=HEADERS, timeout=8)
         if r.status_code != 200:
             return []
         data = r.json()
@@ -74,10 +77,10 @@ def fetch_espn_matches_by_date(league_code, date_str):
         for ev in data.get("events", []):
             comp = ev.get("competitions", [{}])[0]
             competitors = comp.get("competitors", [])
-            
+
             home_team, away_team = "Domicile", "Extérieur"
             home_score, away_score = "", ""
-            
+
             for c in competitors:
                 if c.get("homeAway") == "home":
                     home_team = c.get("team", {}).get("displayName", "")
@@ -89,7 +92,7 @@ def fetch_espn_matches_by_date(league_code, date_str):
             raw_date = ev.get("date", "")
             time_str = raw_date[11:16] if len(raw_date) >= 16 else "N/D"
             status_text = comp.get("status", {}).get("type", {}).get("shortDetail", "")
-            score_display = f"({home_score} - {away_score})" if home_score and away_score else ""
+            score_display = f"({home_score} - {away_score})" if (home_score and away_score) else ""
 
             matches.append({
                 "id": ev.get("id"),
@@ -115,11 +118,8 @@ with st.sidebar:
     selected_league_label = st.selectbox("Championnat", list(LEAGUES.keys()))
     league_code = LEAGUES[selected_league_label]
 
-    # Sélecteur de date (Calendrier complet)
     selected_date = st.date_input("Date cible", date.today())
-    date_query = selected_date.strftime("%Y%m%d")
-
-    mode_recherche = st.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
+    mode_recherche = st.radio("Portée :", ["Semaine complète (+/- 3 jours)", "Jour sélectionné uniquement"])
 
     st.divider()
     st.subheader("Sensibilité du Radar")
@@ -127,20 +127,86 @@ with st.sidebar:
     min_xg = st.slider("xG min / 90m (Buteurs)", 0.20, 0.80, 0.35, step=0.05)
     min_xa = st.slider("xA min / 90m (Passeurs)", 0.15, 0.60, 0.25, step=0.05)
 
-# Récupération des matchs
+# Calcul du paramètre dates pour ESPN
 if mode_recherche == "Jour sélectionné uniquement":
-    matches = fetch_espn_matches_by_date(league_code, date_query)
+    date_param = selected_date.strftime("%Y%m%d")
 else:
-    matches = []
-    # Interroge de J-3 à J+3
-    for offset in range(-3, 4):
-        d_str = (selected_date + timedelta(days=offset)).strftime("%Y%m%d")
-        matches.extend(fetch_espn_matches_by_date(league_code, d_str))
+    d_start = (selected_date - timedelta(days=3)).strftime("%Y%m%d")
+    d_end = (selected_date + timedelta(days=3)).strftime("%Y%m%d")
+    date_param = f"{d_start}-{d_end}"
+
+with st.spinner("Chargement des rencontres..."):
+    matches = fetch_espn_matches(league_code, date_param)
 
 if not matches:
-    st.info(f"Aucune rencontre trouvée pour {selected_league_label} autour du {selected_date.strftime('%d/%m/%Y')}.")
+    st.warning(f"Aucune rencontre trouvée pour {selected_league_label} sur cette période.")
+    st.info("💡 Astuce : Si aucun match n'est programmé ce jour précis, essayez de changer la date ou la ligue.")
 else:
+    # Construction propre des options du menu déroulant
     match_labels = {}
     for m in matches:
-        label = f"[{m['date']} {m['time']}] {m['home']} vs {m['away']} {m['score']} ({m['status']})"
+        label = f"[{m['date']} {m['time']} UTC] {m['home']} vs {m['away']} {m['score']} - {m['status']}"
         match_labels[label] = m
+
+    selected_label = st.selectbox("Sélectionnez le match :", list(match_labels.keys()))
+    current_match = match_labels[selected_label]
+
+    st.divider()
+
+    home_name = current_match["home"]
+    away_name = current_match["away"]
+
+    st.subheader(f"🏟️ Affiche : {home_name} vs {away_name}")
+    st.caption(f"Date : {current_match['date']} | Heure : {current_match['time']} UTC | Statut : {current_match['status']} {current_match['score']}")
+
+    def match_team(team_ref, candidate_name):
+        return team_ref.lower() in candidate_name.lower() or candidate_name.lower() in team_ref.lower()
+
+    players_match = [p for p in PLAYERS_DATABASE if match_team(p["team"], home_name) or match_team(p["team"], away_name)]
+
+    buteurs = []
+    passeurs = []
+
+    for p in players_match:
+        if p["type"] == "buteur":
+            if p["shots"] >= min_shots or p["xg"] >= min_xg:
+                score = min(round((p["shots"] * 1.5) + (p["xg"] * 8.0) + (1.5 if p["pen"] else 0), 1), 9.9)
+                buteurs.append({**p, "score": score})
+        elif p["type"] == "passeur":
+            if p["xa"] >= min_xa or p["key_passes"] >= 2.0:
+                score = min(round((p["key_passes"] * 1.5) + (p["xa"] * 9.0) + (1.0 if p["set_piece"] else 0), 1), 9.9)
+                passeurs.append({**p, "score": score})
+
+    tab_buteurs, tab_passeurs = st.tabs(["🎯 Buteurs Recommandés", "🅰️ Passeurs Recommandés"])
+
+    with tab_buteurs:
+        if buteurs:
+            for b in sorted(buteurs, key=lambda x: x["score"], reverse=True):
+                with st.container(border=True):
+                    col_info, col_metrics = st.columns([2, 3])
+                    with col_info:
+                        st.markdown(f"### ⚽ {b['name']}")
+                        st.write(f"**Club :** {b['team']} ({b['role']})")
+                        st.metric("Indice de Confiance", f"{b['score']} / 10")
+                    with col_metrics:
+                        st.progress(min(b["shots"] / 5.0, 1.0), text=f"Tirs / 90m : {b['shots']}")
+                        st.progress(min(b["xg"] / 1.0, 1.0), text=f"xG moyen : {b['xg']}")
+                        st.markdown(f"**Tireur de Penalty :** {'Oui 🎯' if b['pen'] else 'Non'}")
+        else:
+            st.info("Aucun profil de pur buteur répertorié au-dessus des seuils choisis pour cette affiche.")
+
+    with tab_passeurs:
+        if passeurs:
+            for p in sorted(passeurs, key=lambda x: x["score"], reverse=True):
+                with st.container(border=True):
+                    col_info, col_metrics = st.columns([2, 3])
+                    with col_info:
+                        st.markdown(f"### 🅰️ {p['name']}")
+                        st.write(f"**Club :** {p['team']} ({p['role']})")
+                        st.metric("Indice de Confiance", f"{p['score']} / 10")
+                    with col_metrics:
+                        st.progress(min(p["key_passes"] / 4.0, 1.0), text=f"Passes clés / 90m : {p['key_passes']}")
+                        st.progress(min(p["xa"] / 0.8, 1.0), text=f"xA moyen : {p['xa']}")
+                        st.markdown(f"**Coups de pied arrêtés :** {'Oui (Corners / CF) 🎯' if p['set_piece'] else 'Non'}")
+        else:
+            st.info("Aucun profil passeur répertorié au-dessus des seuils choisis pour ce match.")
