@@ -13,13 +13,6 @@ HEADERS = {
 
 # Catalogue étendu de compétitions via ESPN
 LEAGUES = {
-    # Compétitions Internationales
-    "Ligue des Nations (UEFA)": "uefa.nations",
-    "Ligue des Champions": "uefa.champions",
-    "Ligue Europa": "uefa.europa",
-    "Copa Libertadores": "conmebol.libertadores",
-    
-    # Europe Majeure
     "Ligue 1 (France)": "fra.1",
     "Premier League (Angleterre)": "eng.1",
     "Liga (Espagne)": "esp.1",
@@ -27,12 +20,14 @@ LEAGUES = {
     "Bundesliga (Allemagne)": "ger.1",
     "Liga Portugal": "por.1",
     "Eredivisie (Pays-Bas)": "ned.1",
-
-    # Amériques & Asie
+    "Ligue des Champions": "uefa.champions",
+    "Ligue Europa": "uefa.europa",
+    "Ligue des Nations (UEFA)": "uefa.nations",
     "Brésil (Brasileirão Série A)": "bra.1",
     "Japon (J1 League)": "jpn.1",
     "Chine (Chinese Super League)": "chn.1",
-    "MLS (États-Unis)": "usa.1"
+    "MLS (États-Unis)": "usa.1",
+    "Copa Libertadores": "conmebol.libertadores"
 }
 
 # ---------------------------------------------------------------------------
@@ -61,30 +56,4 @@ PLAYERS_DATABASE = [
     {"name": "Robert Lewandowski", "team": "Barcelona", "role": "Buteur", "type": "buteur", "shots": 3.8, "xg": 0.73, "pen": True},
     {"name": "Raphinha", "team": "Barcelona", "role": "Ailier", "type": "buteur", "shots": 3.1, "xg": 0.48, "pen": False},
     {"name": "Lamine Yamal", "team": "Barcelona", "role": "Ailier", "type": "passeur", "key_passes": 3.0, "xa": 0.43, "set_piece": True},
-    {"name": "Antoine Griezmann", "team": "Atlético Madrid", "role": "Attaquant", "type": "buteur", "shots": 2.6, "xg": 0.45, "pen": True},
-
-    # Brésil (Brasileirão)
-    {"name": "Pedro", "team": "Flamengo", "role": "Buteur", "type": "buteur", "shots": 3.4, "xg": 0.65, "pen": True},
-    {"name": "Giorgian de Arrascaeta", "team": "Flamengo", "role": "Milieu Off", "type": "passeur", "key_passes": 3.1, "xa": 0.44, "set_piece": True},
-    {"name": "Raphael Veiga", "team": "Palmeiras", "role": "Milieu Off", "type": "buteur", "shots": 2.8, "xg": 0.42, "pen": True},
-    {"name": "Yuri Alberto", "team": "Corinthians", "role": "Buteur", "type": "buteur", "shots": 2.9, "xg": 0.51, "pen": False},
-    {"name": "Lucas Moura", "team": "Sao Paulo", "role": "Ailier", "type": "buteur", "shots": 2.6, "xg": 0.38, "pen": True},
-
-    # Japon (J-League)
-    {"name": "Anderson Lopes", "team": "Yokohama F. Marinos", "role": "Buteur", "type": "buteur", "shots": 3.3, "xg": 0.60, "pen": True},
-    {"name": "Leo Ceara", "team": "Cerezo Osaka", "role": "Buteur", "type": "buteur", "shots": 3.1, "xg": 0.55, "pen": True},
-    {"name": "Yuya Osako", "team": "Vissel Kobe", "role": "Buteur", "type": "buteur", "shots": 2.8, "xg": 0.48, "pen": True},
-    {"name": "Yoshinori Muto", "team": "Vissel Kobe", "role": "Ailier", "type": "passeur", "key_passes": 2.5, "xa": 0.35, "set_piece": False},
-
-    # Chine (Super League)
-    {"name": "Wu Lei", "team": "Shanghai Port", "role": "Attaquant", "type": "buteur", "shots": 3.9, "xg": 0.75, "pen": False},
-    {"name": "Oscar", "team": "Shanghai Port", "role": "Milieu Off", "type": "passeur", "key_passes": 3.8, "xa": 0.52, "set_piece": True},
-    {"name": "Gustavo", "team": "Shanghai Port", "role": "Buteur", "type": "buteur", "shots": 3.2, "xg": 0.62, "pen": True},
-    {"name": "Cephas Malele", "team": "Shanghai Shenhua", "role": "Buteur", "type": "buteur", "shots": 3.0, "xg": 0.53, "pen": False},
-
-    # Sélections Nationales (Ligue des Nations)
-    {"name": "Kylian Mbappé", "team": "France", "role": "Attaquant", "type": "buteur", "shots": 4.1, "xg": 0.78, "pen": True},
-    {"name": "Harry Kane", "team": "England", "role": "Buteur", "type": "buteur", "shots": 3.9, "xg": 0.75, "pen": True},
-    {"name": "Cristiano Ronaldo", "team": "Portugal", "role": "Buteur", "type": "buteur", "shots": 4.2, "xg": 0.72, "pen": True},
-    {"name": "Bruno Fernandes", "team": "Portugal", "role": "Milieu Off", "type": "passeur", "key_passes": 3.4, "xa": 0.47, "set_piece": True},
-    {"name": "Florian Wirtz", "team": "Germany", "role": "Milieu Off", "type": "passeur", "key_passes": 3.0, "xa": 0.42, "set_piece": True}
+    {"name": "Antoine Griezmann", "team": "Atlético Madrid", "role": "Att
