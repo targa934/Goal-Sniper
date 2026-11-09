@@ -83,4 +83,8 @@ PLAYERS_DATABASE = [
     {"name": "Cephas Malele", "team": "Shanghai Shenhua", "role": "Buteur", "type": "buteur", "shots": 3.0, "xg": 0.53, "pen": False},
 
     # Sélections Nationales (Ligue des Nations)
-    {"name": "Kylian Mbappé", "team": "France", "role": "Attaquant", "type": "buteur", "shots
+    {"name": "Kylian Mbappé", "team": "France", "role": "Attaquant", "type": "buteur", "shots": 4.1, "xg": 0.78, "pen": True},
+    {"name": "Harry Kane", "team": "England", "role": "Buteur", "type": "buteur", "shots": 3.9, "xg": 0.75, "pen": True},
+    {"name": "Cristiano Ronaldo", "team": "Portugal", "role": "Buteur", "type": "buteur", "shots": 4.2, "xg": 0.72, "pen": True},
+    {"name": "Bruno Fernandes", "team": "Portugal", "role": "Milieu Off", "type": "passeur", "key_passes": 3.4, "xa": 0.47, "set_piece": True},
+    {"name": "Florian Wirtz", "team": "Germany", "role": "Milieu Off", "type": "passeur", "key_passes": 3.0, "xa": 0.42, "set_piece": True}
