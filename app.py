@@ -156,7 +156,7 @@ def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
                 athletes.append({
                     "name": p_name,
                     "jersey": ath.get("jersey", "-"),
-                    "pos": pos,
+                    "pos": p,
                     "category": cat,
                     "photo": p_head,
                     "starter": False,
@@ -223,15 +223,38 @@ else:
 
     tab_buteurs, tab_passeurs, tab_effectifs = st.tabs(["🎯 Buteurs Potentiels", "🅰️ Passeurs Potentiels", "📋 Effectifs Complets"])
 
-    def display_player_cards(container, player_list):
-        if not player_list:
-            container.info("Aucun joueur répertorié pour cette sélection.")
+    def render_player_cards(players_to_show):
+        if not players_to_show:
+            st.info("Aucun joueur répertorié pour cette sélection.")
             return
 
-        cols = container.columns(2)
+        cols = st.columns(2)
         placeholder_img = "https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=250&h=180"
 
-        for idx, p in enumerate(player_list):
-            card_col = cols[idx % 2]
-            card_box = card_col.container(border=True)
-            img_c,
+        for idx, p in enumerate(players_to_show):
+            with cols[idx % 2]:
+                with st.container(border=True):
+                    img_c, info_c = st.columns([1, 2.5])
+                    photo_url = p.get("photo") if p.get("photo") else placeholder_img
+                    img_c.image(photo_url, use_container_width=True)
+
+                    badge = " 🟢 Titulaire" if p.get("starter") else ""
+                    info_c.markdown("**" + p["name"] + "**" + badge)
+                    info_c.caption("Club : **" + p["team"] + "** • #" + str(p.get("jersey", "-")) + " • Poste : `" + str(p.get("pos", "N/D")) + "`")
+
+                    m1, m2, m3 = info_c.columns(3)
+                    m1.metric("⚽ Buts", p.get("goals", 0))
+                    m2.metric("🅰️ Passes", p.get("assists", 0))
+                    m3.metric("⏱️ Temps", str(p.get("avg_mins", 0)) + "m")
+
+    with tab_buteurs:
+        st.markdown(f"**Attaquants cibles ({len(buteurs)}) :**")
+        render_player_cards(buteurs)
+
+    with tab_passeurs:
+        st.markdown(f"**Milieux / Créateurs cibles ({len(passeurs)}) :**")
+        render_player_cards(passeurs)
+
+    with tab_effectifs:
+        st.markdown(f"**Tous les joueurs de champ ({len(all_field)}) :**")
+        render_player_cards(all_field)
