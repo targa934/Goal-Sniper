@@ -9,7 +9,7 @@ st.set_page_config(page_title="Radar Buteurs & Passeurs", page_icon="⚽", layou
 
 # Clé API Football-Data.org (gratuite)
 # Remplace par ta clé reçue par email, ou laisse celle-ci pour tester
-API_KEY = "64cbb0dbbfb84b659c278a9cbbd58e3e"  # Clé publique de démo
+API_KEY = "3d731125ea3347f4ae83d477b8f536da"  # Clé privé targa
 
 HEADERS = {
     "X-Auth-Token": API_KEY
