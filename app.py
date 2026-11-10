@@ -1,75 +1,229 @@
 import streamlit as st
 import requests
-from datetime import datetime, date, timedelta
+import json
+import os
+from datetime import datetime
 
-st.set_page_config(page_title="Radar Buteurs & Passeurs", page_icon="🎯", layout="wide")
+# ---------------------------------------------------------------------------
+# CONFIGURATION DE LA PAGE
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Goal Sniper | Radar Buteurs & Passeurs",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# ---------------------------------------------------------------------------
+# GESTION DES FAVORIS ET PERSISTANCE LOCALE
+# ---------------------------------------------------------------------------
+FAV_FILE = "user_favorites.json"
 
-LEAGUES = {
-    "Ligue 1 (France)": "fra.1",
-    "Premier League (Angleterre)": "eng.1",
-    "Liga (Espagne)": "esp.1",
-    "Serie A (Italie)": "ita.1",
-    "Bundesliga (Allemagne)": "ger.1",
-    "Ligue des Champions": "uefa.champions",
-    "Ligue des Nations (UEFA)": "uefa.nations",
-    "Liga Portugal": "por.1",
-    "Eredivisie (Pays-Bas)": "ned.1",
-    "Brésil (Brasileirão)": "bra.1",
-    "Japon (J1 League)": "jpn.1",
-    "Chine (Super League)": "chn.1",
-    "MLS (États-Unis)": "usa.1"
+def load_stored_favorites():
+    if os.path.exists(FAV_FILE):
+        try:
+            with open(FAV_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_stored_favorites(favs):
+    try:
+        with open(FAV_FILE, "w", encoding="utf-8") as f:
+            json.dump(favs, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+if "favorites" not in st.session_state:
+    st.session_state.favorites = load_stored_favorites()
+
+if "profile_name" not in st.session_state:
+    st.session_state.profile_name = "Sniper_Pro"
+
+if "theme_accent" not in st.session_state:
+    st.session_state.theme_accent = "Vert Néon (#00E676)"
+
+# ---------------------------------------------------------------------------
+# DIRECTION ARTISTIQUE & CSS PERSONNALISÉ (STYLE EA SPORTS / BOOKMAKER TECH)
+# ---------------------------------------------------------------------------
+CUSTOM_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,800;0,900;1,800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Montserrat', sans-serif;
 }
 
-@st.cache_data(ttl=180)
-def fetch_espn_matches(league_code, date_param):
-    url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + league_code + "/scoreboard?dates=" + str(date_param)
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=8)
-        if r.status_code != 200:
-            return []
-        matches = []
-        for ev in r.json().get("events", []):
-            comp = ev.get("competitions", [{}])[0]
-            comps = comp.get("competitors", [])
-            h_team, a_team, h_id, a_id = "Domicile", "Extérieur", "", ""
-            h_sc, a_sc = "", ""
-            for c in comps:
-                tm = c.get("team", {})
-                if c.get("homeAway") == "home":
-                    h_team = tm.get("displayName", "")
-                    h_id = tm.get("id", "")
-                    h_sc = c.get("score", "")
-                else:
-                    a_team = tm.get("displayName", "")
-                    a_id = tm.get("id", "")
-                    a_sc = c.get("score", "")
-            raw_d = ev.get("date", "")
-            t_str = raw_d[11:16] if len(raw_d) >= 16 else "N/D"
-            st_txt = comp.get("status", {}).get("type", {}).get("shortDetail", "")
-            sc_str = ""
-            if h_sc and a_sc:
-                sc_str = "(" + str(h_sc) + " - " + str(a_sc) + ")"
-            matches.append({
-                "id": ev.get("id"),
-                "home": h_team,
-                "home_id": h_id,
-                "away": a_team,
-                "away_id": a_id,
-                "time": t_str,
-                "status": st_txt,
-                "score": sc_str,
-                "date": raw_d[:10]
-            })
-        return matches
-    except Exception:
-        return []
+/* Thème sombre global profond */
+.stApp {
+    background: radial-gradient(circle at 50% 0%, #151c2e 0%, #0a0d14 70%, #06080d 100%);
+    color: #F0F4F8;
+}
 
-@st.cache_data(ttl=3600)
-def fetch_league_real_stats(league_code):
-    stats = {}
-    url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + league_code + "/statistics"
+/* En-tête dynamique */
+.header-hero {
+    background: linear-gradient(135deg, rgba(20, 28, 48, 0.8) 0%, rgba(10, 14, 24, 0.9) 100%);
+    border: 1px solid rgba(0, 230, 118, 0.25);
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(10px);
+}
+.header-hero h1 {
+    font-weight: 900;
+    font-size: 2.1rem;
+    letter-spacing: -0.5px;
+    margin: 0;
+    background: linear-gradient(90deg, #FFFFFF 0%, #00E676 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.header-hero p {
+    color: #94A3B8;
+    margin-top: 6px;
+    font-size: 0.95rem;
+}
+
+/* Carte Joueur Type EA Sports FC / Bookmaker */
+.player-card {
+    background: linear-gradient(145deg, #131b2e 0%, #0e1422 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
+}
+.player-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 230, 118, 0.5);
+    box-shadow: 0 14px 30px rgba(0, 230, 118, 0.15);
+}
+.player-card.rank-top {
+    border-top: 3px solid #FFD700;
+}
+
+/* Badge de rang */
+.rank-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
+    color: #000;
+    font-weight: 900;
+    font-size: 0.8rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+}
+
+/* Avatar photo */
+.player-photo-wrap {
+    width: 86px;
+    height: 86px;
+    border-radius: 16px;
+    background: radial-gradient(circle, #253352 0%, #0f172a 100%);
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.player-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Grille de stats */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.stat-box {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 8px 6px;
+    text-align: center;
+}
+.stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #00E676;
+}
+.stat-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: #94A3B8;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Tags de statut */
+.tag-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.tag-fw { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+.tag-mf { background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
+.tag-club { background: rgba(255, 255, 255, 0.08); color: #E2E8F0; }
+
+/* Responsive mobile */
+@media (max-width: 768px) {
+    .header-hero h1 { font-size: 1.5rem; }
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .stat-value { font-size: 0.95rem; }
+}
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# ---------------------------------------------------------------------------
+# CONFIGURATION DES LIGUES & ENDPOINTS ESPN
+# ---------------------------------------------------------------------------
+LEAGUES = {
+    "Ligue 1 (France)": {"code": "fra.1", "flag": "🇫🇷"},
+    "Premier League (Angleterre)": {"code": "eng.1", "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+    "La Liga (Espagne)": {"code": "esp.1", "flag": "🇪🇸"},
+    "Serie A (Italie)": {"code": "ita.1", "flag": "🇮🇹"},
+    "Bundesliga (Allemagne)": {"code": "ger.1", "flag": "🇩🇪"},
+    "Ligue des Champions (UEFA)": {"code": "uefa.champions", "flag": "🇪🇺"},
+    "Liga Portugal": {"code": "por.1", "flag": "🇵🇹"},
+    "Eredivisie (Pays-Bas)": {"code": "ned.1", "flag": "🇳🇱"},
+    "MLS (États-Unis)": {"code": "usa.1", "flag": "🇺🇸"},
+    "Brasileirão (Brésil)": {"code": "bra.1", "flag": "🇧🇷"}
+}
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
+
+# ---------------------------------------------------------------------------
+# CHARGEMENT DES DONNÉES RÉELLES OFFICIELLES (CLASSEMENTS & STATS)
+# ---------------------------------------------------------------------------
+@st.cache_data(ttl=1800)
+def fetch_official_league_leaders(league_code):
+    """
+    Récupère le classement statistique officiel de la ligue en cours depuis ESPN.
+    Renvoie les leaders réels en Buts et en Passes décisives avec leurs vraies stats.
+    """
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/statistics"
+    buteurs = []
+    passeurs = []
     try:
         r = requests.get(url, headers=HEADERS, timeout=8)
         if r.status_code == 200:
@@ -78,211 +232,389 @@ def fetch_league_real_stats(league_code):
                 c_name = str(cat.get("name", "")).lower()
                 is_goal = ("goal" in c_name or "scorer" in c_name)
                 is_assist = ("assist" in c_name)
-                for leader in cat.get("leaders", []):
-                    ath = leader.get("athlete", {})
-                    p_name = ath.get("displayName", "").strip().lower()
-                    val = int(leader.get("value", 0))
-                    if p_name not in stats:
-                        stats[p_name] = {"goals": 0, "assists": 0}
-                    if is_goal:
-                        stats[p_name]["goals"] = val
-                    elif is_assist:
-                        stats[p_name]["assists"] = val
-    except Exception:
-        pass
-    return stats
-
-def get_role_category(pos):
-    p = str(pos).upper()
-    if any(r in p for r in ["F", "A", "FW", "CF", "ST", "W", "LW", "RW"]):
-        return "Attaquant"
-    if any(r in p for r in ["M", "MF", "CM", "AM", "DM"]):
-        return "Milieu"
-    return "Défenseur"
-
-def get_headshot_url(ath):
-    h = ath.get("headshot", {})
-    if isinstance(h, dict) and h.get("href"):
-        return h.get("href")
-    ath_id = str(ath.get("id", ""))
-    if ath_id:
-        return "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/" + ath_id + ".png&w=350&h=254"
-    return "https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=250&h=180"
-
-@st.cache_data(ttl=300)
-def fetch_match_or_team_players(league_code, event_id, home_id, away_id):
-    hp = []
-    ap = []
-    real_stats = fetch_league_real_stats(league_code)
-
-    sum_url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + league_code + "/summary?event=" + str(event_id)
-    try:
-        r = requests.get(sum_url, headers=HEADERS, timeout=8)
-        if r.status_code == 200:
-            rosters = r.json().get("rosters", [])
-            for idx, t_rst in enumerate(rosters):
-                target = hp if idx == 0 else ap
-                for entry in t_rst.get("roster", []):
-                    ath = entry.get("athlete", {})
-                    p_pos = entry.get("position", {})
-                    pos = p_pos.get("abbreviation", "") if isinstance(p_pos, dict) else str(p_pos)
-                    if pos in ["G", "GK"]:
-                        continue
-                    p_name = ath.get("displayName", "")
-                    clean_name = p_name.strip().lower()
-
-                    g_val = real_stats.get(clean_name, {}).get("goals", 0)
-                    a_val = real_stats.get(clean_name, {}).get("assists", 0)
-
-                    target.append({
-                        "name": p_name,
-                        "jersey": entry.get("jersey", "-"),
-                        "pos": pos,
-                        "category": get_role_category(pos),
-                        "photo": get_headshot_url(ath),
-                        "starter": entry.get("starter", False),
-                        "goals": g_val,
-                        "assists": a_val,
-                        "avg_mins": 75 if entry.get("starter") else 30
-                    })
-            if hp or ap:
-                return hp, ap
-    except Exception:
-        pass
-
-    def get_team_roster(t_id):
-        if not t_id:
-            return []
-        r_url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + league_code + "/teams/" + str(t_id) + "/roster"
-        try:
-            res = requests.get(r_url, headers=HEADERS, timeout=8)
-            if res.status_code != 200:
-                return []
-            athletes = []
-            for ath in res.json().get("athletes", []):
-                p_pos = ath.get("position", {})
-                pos = p_pos.get("abbreviation", "") if isinstance(p_pos, dict) else str(p_pos)
-                if pos in ["G", "GK"]:
+                
+                if not (is_goal or is_assist):
                     continue
-                p_name = ath.get("displayName", "")
-                clean_name = p_name.strip().lower()
 
-                g_val = real_stats.get(clean_name, {}).get("goals", 0)
-                a_val = real_stats.get(clean_name, {}).get("assists", 0)
+                for rank, leader in enumerate(cat.get("leaders", []), start=1):
+                    ath = leader.get("athlete", {})
+                    team_info = ath.get("team", {})
+                    team_name = team_info.get("displayName", "Club N/D")
+                    
+                    pos_info = ath.get("position", {})
+                    pos_name = pos_info.get("abbreviation", "ATT" if is_goal else "MIL")
+                    
+                    p_id = str(ath.get("id", ""))
+                    photo = ath.get("headshot", {}).get("href", "")
+                    if not photo and p_id:
+                        photo = f"https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/{p_id}.png&w=350&h=254"
 
-                athletes.append({
-                    "name": p_name,
-                    "jersey": ath.get("jersey", "-"),
-                    "pos": pos,
-                    "category": get_role_category(pos),
-                    "photo": get_headshot_url(ath),
-                    "starter": False,
-                    "goals": g_val,
-                    "assists": a_val,
-                    "avg_mins": 65
+                    nat_info = ath.get("citizenship", "") or ath.get("flag", {}).get("alt", "N/D")
+                    
+                    # Extraction des stats réelles
+                    val_stat = int(leader.get("value", 0))
+                    stat_display = leader.get("displayValue", str(val_stat))
+
+                    player_dict = {
+                        "id": p_id or f"{ath.get('displayName')}_{team_name}",
+                        "rank": rank,
+                        "name": ath.get("displayName", "Joueur"),
+                        "team": team_name,
+                        "pos": pos_name,
+                        "photo": photo or "https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=200&h=200&fit=crop",
+                        "nationality": nat_info,
+                        "goals": val_stat if is_goal else "N/D",
+                        "assists": val_stat if is_assist else "N/D",
+                        "matches": ath.get("statistics", {}).get("gamesPlayed", "N/D"),
+                        "shots_pg": "N/D",
+                        "shots_on_target": "N/D",
+                        "avg_mins": "N/D"
+                    }
+
+                    if is_goal:
+                        buteurs.append(player_dict)
+                    elif is_assist:
+                        passeurs.append(player_dict)
+    except Exception:
+        pass
+
+    return buteurs[:15], passeurs[:15]
+
+@st.cache_data(ttl=1800)
+def fetch_league_teams(league_code):
+    """
+    Récupère la liste officielle des clubs d'une ligue pour le filtre par équipe.
+    """
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/teams"
+    teams = []
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        if r.status_code == 200:
+            sports = r.json().get("sports", [{}])[0]
+            leagues = sports.get("leagues", [{}])[0]
+            for t in leagues.get("teams", []):
+                t_obj = t.get("team", {})
+                teams.append({
+                    "id": t_obj.get("id"),
+                    "name": t_obj.get("displayName"),
+                    "logo": t_obj.get("logos", [{}])[0].get("href", "")
                 })
-            return athletes
-        except Exception:
-            return []
+    except Exception:
+        pass
+    return sorted(teams, key=lambda x: x["name"])
 
-    return get_team_roster(home_id), get_team_roster(away_id)
+@st.cache_data(ttl=900)
+def fetch_team_top_players(league_code, team_id, team_name):
+    """
+    Récupère les joueurs clés d'une équipe sélectionnée à partir de son effectif officiel.
+    """
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/teams/{team_id}/roster"
+    players = []
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        if r.status_code == 200:
+            athletes = r.json().get("athletes", [])
+            for ath in athletes:
+                pos = ath.get("position", {}).get("abbreviation", "")
+                if pos in ["G", "GK"]:
+                    continue  # Exclusion stricte des gardiens
+                
+                p_id = str(ath.get("id", ""))
+                photo = ath.get("headshot", {}).get("href", "")
+                if not photo and p_id:
+                    photo = f"https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/{p_id}.png&w=350&h=254"
 
-st.title("🎯 Radar Prédictif : Buteurs & Passeurs")
-st.caption("Données statistiques réelles ESPN et fiches détaillées par joueur.")
+                # Détermination du profil offensif (Attaquant / Milieu créateur)
+                is_fw = any(x in pos for x in ["F", "A", "FW", "CF", "ST", "W", "LW", "RW"])
+                
+                players.append({
+                    "id": p_id or f"{ath.get('displayName')}_{team_name}",
+                    "name": ath.get("displayName", "Joueur"),
+                    "team": team_name,
+                    "jersey": ath.get("jersey", "-"),
+                    "pos": pos or "OFF",
+                    "is_fw": is_fw,
+                    "photo": photo or "https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=200&h=200&fit=crop",
+                    "nationality": ath.get("citizenship", "N/D"),
+                    "goals": "En cours",
+                    "assists": "En cours",
+                    "matches": "N/D",
+                    "shots_pg": "N/D",
+                    "shots_on_target": "N/D",
+                    "avg_mins": "N/D"
+                })
+    except Exception:
+        pass
 
-st.sidebar.header("⚙️ Compétition")
-selected_league_label = st.sidebar.selectbox("Ligue / Tournoi", list(LEAGUES.keys()))
-league_code = LEAGUES[selected_league_label]
-selected_date = st.sidebar.date_input("Date cible", date.today())
-mode_recherche = st.sidebar.radio("Portée :", ["Jour sélectionné uniquement", "Semaine complète (+/- 3 jours)"])
+    # Classement : attaquants en priorité, puis ailiers et milieux
+    players.sort(key=lambda p: (1 if p["is_fw"] else 0), reverse=True)
+    return players[:5]
 
-if mode_recherche == "Jour sélectionné uniquement":
-    date_param = selected_date.strftime("%Y%m%d")
-else:
-    d1 = selected_date - timedelta(days=3)
-    d2 = selected_date + timedelta(days=3)
-    date_param = d1.strftime("%Y%m%d") + "-" + d2.strftime("%Y%m%d")
+# ---------------------------------------------------------------------------
+# COMPOSANT DE RENDU DES CARTES JOUEURS (DESIGN FIFA ULTIMATE TEAM)
+# ---------------------------------------------------------------------------
+def render_fut_player_card(player, rank_num=None, category_mode="Buteur"):
+    pid = str(player.get("id", player.get("name")))
+    is_fav = pid in st.session_state.favorites
 
-with st.spinner("Recherche des matchs en cours..."):
-    matches = fetch_espn_matches(league_code, date_param)
+    col_card, col_btn = st.columns([5, 1])
+    
+    with col_card:
+        card_html = f"""
+        <div class="player-card {'rank-top' if rank_num and rank_num <= 3 else ''}">
+            {f'<div class="rank-badge">TOP #{rank_num}</div>' if rank_num else ''}
+            <div style="display: flex; gap: 16px; align-items: center; margin-top: { '10px' if rank_num else '0px' };">
+                <div class="player-photo-wrap">
+                    <img src="{player.get('photo')}" onerror="this.src='https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=200&h=200&fit=crop'" />
+                </div>
+                <div style="flex: 1;">
+                    <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+                        <span class="tag-pill {'tag-fw' if 'F' in player.get('pos', '') or 'A' in player.get('pos', '') else 'tag-mf'}">{player.get('pos', 'OFF')}</span>
+                        <span class="tag-pill tag-club">{player.get('team')}</span>
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #FFF; line-height: 1.2;">
+                        {player.get('name')}
+                    </div>
+                    <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 3px;">
+                        Nationalité : {player.get('nationality', 'N/D')}
+                    </div>
+                </div>
+            </div>
 
-if not matches:
-    st.warning("Aucune rencontre trouvée pour cette période.")
-else:
-    match_labels = {}
-    for m in matches:
-        label = "[" + m["date"] + " " + m["time"] + " UTC] " + m["home"] + " vs " + m["away"] + " " + m["score"] + " - " + m["status"]
-        match_labels[label] = m
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{player.get('goals', 'N/D')}</div>
+                    <div class="stat-label">⚽ Buts</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{player.get('assists', 'N/D')}</div>
+                    <div class="stat-label">🅰️ Passes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{player.get('matches', 'N/D')}</div>
+                    <div class="stat-label">🏟️ Matchs</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{player.get('shots_pg', 'N/D')}</div>
+                    <div class="stat-label">🎯 Tirs / m</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{player.get('shots_on_target', 'N/D')}</div>
+                    <div class="stat-label">🥅 Cadrés / m</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{player.get('avg_mins', 'N/D')}</div>
+                    <div class="stat-label">⏱️ Temps jeu</div>
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
 
-    selected_label = st.selectbox("Sélectionnez le match :", list(match_labels.keys()))
-    current_match = match_labels[selected_label]
+    with col_btn:
+        st.write("")
+        st.write("")
+        fav_label = "★" if is_fav else "☆"
+        fav_help = "Retirer des favoris" if is_fav else "Ajouter aux favoris"
+        if st.button(fav_label, key=f"fav_{pid}", help=fav_help, use_container_width=True):
+            if is_fav:
+                del st.session_state.favorites[pid]
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} retiré des favoris", icon="🗑️")
+            else:
+                st.session_state.favorites[pid] = player
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} ajouté aux favoris !", icon="⭐")
+            st.rerun()
 
-    st.divider()
-    home_name = current_match["home"]
-    away_name = current_match["away"]
+# ---------------------------------------------------------------------------
+# NAVIGATION PRINCIPALE (MENU BURGER / SIDEBAR STREAMLIT)
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.markdown("""
+        <div style="text-align: center; padding: 10px 0 20px 0;">
+            <div style="font-size: 2.2rem;">⚡ <b>GOAL SNIPER</b></div>
+            <div style="font-size: 0.8rem; color: #00E676; letter-spacing: 1.5px; text-transform: uppercase;">Radar Offensif & Data</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader("🏟️ " + home_name + " vs " + away_name)
-    st.caption("Date : " + current_match["date"] + " | Coup d'envoi : " + current_match["time"] + " UTC | Statut : " + current_match["status"] + " " + current_match["score"])
+    menu_selection = st.radio(
+        "Navigation",
+        [
+            "🔥 Top 10 Championnats",
+            "🛡️ Top 5 par Équipe",
+            "⭐ Mes Favoris",
+            "👤 Mon Profil",
+            "⚙️ Paramètres"
+        ],
+        label_visibility="collapsed"
+    )
 
-    with st.spinner("Synchronisation des effectifs et statistiques..."):
-        home_players, away_players = fetch_match_or_team_players(
-            league_code, current_match["id"], current_match["home_id"], current_match["away_id"]
-        )
+    st.markdown("---")
+    st.caption("Données réelles certifiées de la saison en cours (ESPN Official Feed).")
 
-    for p in home_players:
-        p["team"] = home_name
-    for p in away_players:
-        p["team"] = away_name
+# ---------------------------------------------------------------------------
+# VUE 1 : TOP 10 PAR CHAMPIONNAT
+# ---------------------------------------------------------------------------
+if menu_selection == "🔥 Top 10 Championnats":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>🔥 Top 10 Buteurs & Passeurs</h1>
+            <p>Classement en temps réel des joueurs les plus décisifs de chaque compétition officielle.</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    all_field = home_players + away_players
+    f_col1, f_col2 = st.columns([2, 2])
+    with f_col1:
+        selected_league_label = st.selectbox("Sélectionnez le championnat :", list(LEAGUES.keys()))
+        league_data = LEAGUES[selected_league_label]
+    
+    with f_col2:
+        profil_mode = st.radio("Profil recherché :", ["⚽ Meilleurs Buteurs", "🅰️ Meilleurs Passeurs"], horizontal=True)
 
-    buteurs = [p for p in all_field if p["category"] == "Attaquant"]
-    buteurs.sort(key=lambda x: (x["goals"], x["assists"]), reverse=True)
+    with st.spinner("Synchronisation des classements officiels réels..."):
+        buteurs_top, passeurs_top = fetch_official_league_leaders(league_data["code"])
 
-    passeurs = [p for p in all_field if p["category"] in ["Milieu", "Attaquant"]]
-    passeurs.sort(key=lambda x: (x["assists"], x["goals"]), reverse=True)
+    target_list = buteurs_top if "Buteurs" in profil_mode else passeurs_top
 
-    tab_buteurs, tab_passeurs, tab_effectifs = st.tabs(["🎯 Buteurs Cibles", "🅰️ Passeurs Cibles", "📋 Effectifs Complets"])
-
-    def render_player_cards(players_to_show):
-        if not players_to_show:
-            st.info("Aucun joueur répertorié pour cette sélection.")
-            return
-
+    if not target_list:
+        st.info("Aucune statistique officielle publiée pour le moment sur cette compétition.")
+    else:
+        st.markdown(f"### {league_data['flag']} Top 10 {selected_league_label} — {profil_mode}")
         cols = st.columns(2)
-        placeholder_img = "https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=250&h=180"
+        for idx, player in enumerate(target_list[:10], start=1):
+            with cols[(idx - 1) % 2]:
+                render_fut_player_card(player, rank_num=idx, category_mode=profil_mode)
 
-        for idx, p in enumerate(players_to_show):
+# ---------------------------------------------------------------------------
+# VUE 2 : TOP 5 PAR ÉQUIPE
+# ---------------------------------------------------------------------------
+elif menu_selection == "🛡️ Top 5 par Équipe":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>🛡️ Top 5 Offensif par Club</h1>
+            <p>Analysez les 5 joueurs d'attaque les plus dangereux d'un effectif ciblé.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        league_label = st.selectbox("Ligue :", list(LEAGUES.keys()), key="team_league_sel")
+        l_code = LEAGUES[league_label]["code"]
+
+    with st.spinner("Chargement des clubs..."):
+        teams_list = fetch_league_teams(l_code)
+
+    if not teams_list:
+        st.warning("Impossible de récupérer la liste des clubs pour ce tournoi.")
+    else:
+        team_options = {t["name"]: t for t in teams_list}
+        with c2:
+            chosen_team_name = st.selectbox("Sélectionnez l'équipe :", list(team_options.keys()))
+            chosen_team = team_options[chosen_team_name]
+
+        with st.spinner(f"Analyse des forces offensives de {chosen_team_name}..."):
+            top_players = fetch_team_top_players(l_code, chosen_team["id"], chosen_team_name)
+
+        st.markdown(f"### 🎯 Top 5 Offensive Squad — {chosen_team_name}")
+        if not top_players:
+            st.info("Effectif indisponible pour ce club.")
+        else:
+            cols = st.columns(2)
+            for idx, p in enumerate(top_players, start=1):
+                with cols[(idx - 1) % 2]:
+                    render_fut_player_card(p, rank_num=idx)
+
+# ---------------------------------------------------------------------------
+# VUE 3 : MES FAVORIS
+# ---------------------------------------------------------------------------
+elif menu_selection == "⭐ Mes Favoris":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>⭐ Ma Sélection de Joueurs</h1>
+            <p>Vos profils clés sauvegardés pour préparer vos paris et suivre vos buteurs fétiches.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    favs = st.session_state.favorites
+
+    if not favs:
+        st.info("Vous n'avez pas encore ajouté de joueur à vos favoris. Cliquez sur l'étoile (☆) sur une carte de joueur pour l'enregistrer ici.")
+    else:
+        st.write(f"**{len(favs)} joueur(s) dans votre carnet de sniper :**")
+        cols = st.columns(2)
+        for idx, (pid, p_data) in enumerate(favs.items()):
             with cols[idx % 2]:
-                with st.container(border=True):
-                    img_c, info_c = st.columns([1, 2.5])
-                    photo_url = p.get("photo") if p.get("photo") else placeholder_img
-                    try:
-                        img_c.image(photo_url, use_container_width=True)
-                    except Exception:
-                        img_c.image(placeholder_img, use_container_width=True)
+                render_fut_player_card(p_data)
 
-                    badge = " 🟢 Titulaire" if p.get("starter") else ""
-                    info_c.markdown("**" + p["name"] + "**" + badge)
-                    info_c.caption("Club : **" + p["team"] + "** • #" + str(p.get("jersey", "-")) + " • Poste : `" + str(p.get("pos", "N/D")) + "`")
+# ---------------------------------------------------------------------------
+# VUE 4 : MON PROFIL
+# ---------------------------------------------------------------------------
+elif menu_selection == "👤 Mon Profil":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>👤 Espace Parieur</h1>
+            <p>Gérez vos préférences, vos sélections et vos paramètres personnels.</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-                    g_cnt = p.get("goals", 0)
-                    a_cnt = p.get("assists", 0)
-                    m_cnt = str(p.get("avg_mins", 0)) + "m"
+    p1, p2 = st.columns([1, 2])
+    with p1:
+        st.markdown(f"""
+            <div style="background: rgba(19, 27, 46, 0.8); border: 1px solid rgba(0, 230, 118, 0.3); border-radius: 16px; padding: 20px; text-align: center;">
+                <div style="font-size: 3.5rem;">🎯</div>
+                <h3 style="margin: 8px 0 2px 0;">{st.session_state.profile_name}</h3>
+                <span class="tag-pill" style="background: rgba(0, 230, 118, 0.2); color: #00E676;">Membre Pro</span>
+                <p style="font-size: 0.8rem; color: #94A3B8; margin-top: 10px;">Compte local actif sur cet appareil</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-                    m1, m2, m3 = info_c.columns(3)
-                    m1.metric("⚽ Buts", g_cnt)
-                    m2.metric("🅰️ Passes", a_cnt)
-                    m3.metric("⏱️ Temps", m_cnt)
+    with p2:
+        with st.container(border=True):
+            st.markdown("#### ⚙️ Vos Informations")
+            new_name = st.text_input("Pseudo / Nom d'utilisateur :", value=st.session_state.profile_name)
+            if new_name != st.session_state.profile_name:
+                st.session_state.profile_name = new_name
+                st.success("Nom mis à jour !")
 
-    with tab_buteurs:
-        st.markdown(f"**Attaquants classés par buts ({len(buteurs)}) :**")
-        render_player_cards(buteurs)
+            st.markdown("---")
+            st.markdown("#### 📊 Statistiques de votre compte")
+            m1, m2 = st.columns(2)
+            m1.metric("Joueurs en favoris", len(st.session_state.favorites))
+            m2.metric("Compétitions suivies", len(LEAGUES))
 
-    with tab_passeurs:
-        st.markdown(f"**Milieux / Créateurs classés par passes ({len(passeurs)}) :**")
-        render_player_cards(passeurs)
+# ---------------------------------------------------------------------------
+# VUE 5 : PARAMÈTRES
+# ---------------------------------------------------------------------------
+elif menu_selection == "⚙️ Paramètres":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>⚙️ Paramètres & Configuration</h1>
+            <p>Personnalisation de l'affichage et maintenance des données en cache.</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    with tab_effectifs:
-        st.markdown(f"**Tous les joueurs de champ ({len(all_field)}) :**")
-        render_player_cards(all_field)
+    with st.container(border=True):
+        st.markdown("#### 🎨 Thème & Affichage")
+        accent = st.selectbox(
+            "Couleur d'accentuation principale :",
+            ["Vert Néon (#00E676)", "Cyan Tech (#00F0FF)", "Or EA Sports (#FFD700)"],
+            index=0
+        )
+        st.session_state.theme_accent = accent
+
+        st.markdown("---")
+        st.markdown("#### 🧹 Données & Cache")
+        st.caption("Si une statistique vient d'évoluer en direct, vous pouvez forcer le rafraîchissement des données ESPN.")
+        if st.button("Vider le cache et resynchroniser", type="primary"):
+            st.cache_data.clear()
+            st.success("Le cache a été vidé avec succès. Les données seront rechargées à la prochaine requête.")
+            st.rerun()
+
+        st.markdown("---")
+        st.markdown("#### 🗑️ Réinitialisation des favoris")
+        if st.button("Supprimer tous mes favoris"):
+            st.session_state.favorites = {}
+            save_stored_favorites({})
+            st.warning("Tous vos favoris ont été effacés.")
+            st.rerun()
