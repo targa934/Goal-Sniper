@@ -120,7 +120,8 @@ def fetch_competition_teams(league_code, token=""):
     except Exception:
         pass
     return sorted(teams, key=lambda x: x["name"])
-    def render_bento_card(player, rank_num=None):
+
+def render_bento_card(player, rank_num=None):
     rank_text = f"#{rank_num}" if rank_num else "TOP"
     banner_class = "rank-gold" if rank_num == 1 else "rank-silver" if rank_num == 2 else "rank-bronze" if rank_num == 3 else ""
     ratio = round(player.get("goals", 0) / player.get("matches", 1), 2) if isinstance(player.get("matches"), int) and player.get("matches") > 0 else "-"
