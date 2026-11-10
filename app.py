@@ -205,8 +205,43 @@ HEADERS = {
 }
 
 # ---------------------------------------------------------------------------
-# CHARGEMENT DES DONNÉES RÉELLES
+# CHARGEMENT DES STATS OFFICIELLES GLOBALES
 # ---------------------------------------------------------------------------
+@st.cache_data(ttl=1800)
+def fetch_league_all_stats(league_code):
+    """
+    Récupère le dictionnaire complet des joueurs répertoriés dans les statistiques officielles ESPN de la ligue.
+    """
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/statistics"
+    stats_map = {}
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        if r.status_code == 200:
+            categories = r.json().get("stats", {}).get("categories", [])
+            for cat in categories:
+                c_name = str(cat.get("name", "")).lower()
+                is_goal = ("goal" in c_name or "scorer" in c_name)
+                is_assist = ("assist" in c_name)
+                
+                for leader in cat.get("leaders", []):
+                    ath = leader.get("athlete", {})
+                    p_name = ath.get("displayName", "").strip().lower()
+                    p_id = str(ath.get("id", ""))
+                    val = int(leader.get("value", 0))
+
+                    for key in [p_name, p_id]:
+                        if not key:
+                            continue
+                        if key not in stats_map:
+                            stats_map[key] = {"goals": 0, "assists": 0}
+                        if is_goal:
+                            stats_map[key]["goals"] = val
+                        elif is_assist:
+                            stats_map[key]["assists"] = val
+    except Exception:
+        pass
+    return stats_map
+
 @st.cache_data(ttl=1800)
 def fetch_official_league_leaders(league_code):
     url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/statistics"
@@ -239,12 +274,12 @@ def fetch_official_league_leaders(league_code):
                         "team": team_name,
                         "pos": pos_name,
                         "nationality": nat_info,
-                        "goals": val_stat if is_goal else "N/D",
-                        "assists": val_stat if is_assist else "N/D",
-                        "matches": ath.get("statistics", {}).get("gamesPlayed", "N/D"),
-                        "shots_pg": "N/D",
-                        "shots_on_target": "N/D",
-                        "avg_mins": "N/D"
+                        "goals": val_stat if is_goal else 0,
+                        "assists": val_stat if is_assist else 0,
+                        "matches": ath.get("statistics", {}).get("gamesPlayed", "-"),
+                        "shots_pg": "-",
+                        "shots_on_target": "-",
+                        "avg_mins": "-"
                     }
 
                     if is_goal:
@@ -275,10 +310,42 @@ def fetch_league_teams(league_code):
         pass
     return sorted(teams, key=lambda x: x["name"])
 
+@st.cache_data(ttl=1800)
+def fetch_athlete_real_stats(athlete_id):
+    """
+    Interroge la fiche individuelle ESPN de l'athlète pour obtenir ses stats consolidées réelles.
+    """
+    if not athlete_id:
+        return {}
+    url = f"https://site.web.api.espn.com/apis/common/v3/sports/soccer/athletes/{athlete_id}/overview"
+    res = {}
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=4)
+        if r.status_code == 200:
+            stats_list = r.json().get("statistics", {}).get("splits", [{}])[0].get("stats", [])
+            for s in stats_list:
+                s_name = str(s.get("name", "")).lower()
+                val = s.get("value", 0)
+                if "goal" in s_name:
+                    res["goals"] = int(val)
+                elif "assist" in s_name:
+                    res["assists"] = int(val)
+                elif "appearance" in s_name or "gamesplayed" in s_name:
+                    res["matches"] = int(val)
+                elif "shot" in s_name and "target" not in s_name:
+                    res["shots"] = val
+                elif "target" in s_name:
+                    res["shots_on_target"] = val
+    except Exception:
+        pass
+    return res
+
 @st.cache_data(ttl=900)
 def fetch_team_top_players(league_code, team_id, team_name):
     url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_code}/teams/{team_id}/roster"
     players = []
+    league_stats = fetch_league_all_stats(league_code)
+
     try:
         r = requests.get(url, headers=HEADERS, timeout=8)
         if r.status_code == 200:
@@ -289,28 +356,66 @@ def fetch_team_top_players(league_code, team_id, team_name):
                     continue
                 
                 p_id = str(ath.get("id", ""))
+                p_name = ath.get("displayName", "Joueur")
+                clean_name = p_name.strip().lower()
                 is_fw = any(x in pos for x in ["F", "A", "FW", "CF", "ST", "W", "LW", "RW"])
-                
+                is_mf = any(x in pos for x in ["M", "MF", "CM", "AM", "DM"])
+
+                # Priorité aux attaquants et milieux créateurs
+                if not (is_fw or is_mf):
+                    continue
+
+                # Récupération des stats réelles :
+                # 1. Vérification dans la table des leaders de ligue
+                known_g = 0
+                known_a = 0
+                if p_id in league_stats:
+                    known_g = league_stats[p_id].get("goals", 0)
+                    known_a = league_stats[p_id].get("assists", 0)
+                elif clean_name in league_stats:
+                    known_g = league_stats[clean_name].get("goals", 0)
+                    known_a = league_stats[clean_name].get("assists", 0)
+
                 players.append({
-                    "id": p_id or f"{ath.get('displayName')}_{team_name}",
-                    "name": ath.get("displayName", "Joueur"),
+                    "id": p_id or f"{p_name}_{team_name}",
+                    "athlete_id": p_id,
+                    "name": p_name,
                     "team": team_name,
                     "jersey": ath.get("jersey", "-"),
                     "pos": pos or "OFF",
                     "is_fw": is_fw,
-                    "nationality": ath.get("citizenship", "N/D"),
-                    "goals": "En cours",
-                    "assists": "En cours",
-                    "matches": "N/D",
-                    "shots_pg": "N/D",
-                    "shots_on_target": "N/D",
-                    "avg_mins": "N/D"
+                    "nationality": ath.get("citizenship", "") or "N/D",
+                    "goals": known_g,
+                    "assists": known_a,
+                    "matches": "-",
+                    "shots_pg": "-",
+                    "shots_on_target": "-",
+                    "avg_mins": "-"
                 })
     except Exception:
         pass
 
-    players.sort(key=lambda p: (1 if p["is_fw"] else 0), reverse=True)
-    return players[:5]
+    # Tri par efficacité offensive réelle (buts puis passes)
+    players.sort(key=lambda p: (p["goals"], p["assists"], 1 if p["is_fw"] else 0), reverse=True)
+    top_5 = players[:5]
+
+    # Pour ces 5 joueurs ciblés uniquement, on complète avec les stats individuelles ESPN si besoin
+    for p in top_5:
+        if p.get("athlete_id"):
+            ath_stats = fetch_athlete_real_stats(p["athlete_id"])
+            if ath_stats:
+                if "goals" in ath_stats:
+                    p["goals"] = ath_stats["goals"]
+                if "assists" in ath_stats:
+                    p["assists"] = ath_stats["assists"]
+                if "matches" in ath_stats:
+                    p["matches"] = ath_stats["matches"]
+                if "shots" in ath_stats:
+                    p["shots_pg"] = ath_stats["shots"]
+                if "shots_on_target" in ath_stats:
+                    p["shots_on_target"] = ath_stats["shots_on_target"]
+
+    return top_5
 
 # ---------------------------------------------------------------------------
 # CARTE JOUEUR ÉPURÉE SANS PHOTO
@@ -340,12 +445,12 @@ def render_player_card(player, rank_num=None, category_mode="Buteur"):
             '</div>',
             '</div>',
             '<div class="stats-grid">',
-            f'<div class="stat-box"><div class="stat-value">{player.get("goals", "N/D")}</div><div class="stat-label">⚽ Buts</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("assists", "N/D")}</div><div class="stat-label">🅰️ Passes</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("matches", "N/D")}</div><div class="stat-label">🏟️ Matchs</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("shots_pg", "N/D")}</div><div class="stat-label">🎯 Tirs / m</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("shots_on_target", "N/D")}</div><div class="stat-label">🥅 Cadrés / m</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("avg_mins", "N/D")}</div><div class="stat-label">⏱️ Temps jeu</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("goals", 0)}</div><div class="stat-label">⚽ Buts</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("assists", 0)}</div><div class="stat-label">🅰️ Passes</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("matches", "-")}</div><div class="stat-label">🏟️ Matchs</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("shots_pg", "-")}</div><div class="stat-label">🎯 Tirs / m</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("shots_on_target", "-")}</div><div class="stat-label">🥅 Cadrés / m</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("avg_mins", "-")}</div><div class="stat-label">⏱️ Temps jeu</div></div>',
             '</div>',
             '</div>'
         ]
