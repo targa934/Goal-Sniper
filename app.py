@@ -35,11 +35,15 @@ if "favorites" not in st.session_state:
 if "profile_name" not in st.session_state:
     st.session_state.profile_name = "Sniper_Pro"
 
+# Traitement des paramètres d'URL (Navigation Zyron & Favoris)
+params = st.query_params
+
+if "tab" in params:
+    st.session_state.nav_tab = params.get("tab")
+
 if "nav_tab" not in st.session_state:
     st.session_state.nav_tab = "top10"
 
-# Traitement immediat des favoris
-params = st.query_params
 if "toggle_fav" in params:
     fav_id = params.get("toggle_fav")
     if fav_id in st.session_state.favorites:
@@ -69,102 +73,129 @@ if "toggle_fav" in params:
     st.rerun()
 
 # ---------------------------------------------------------------------------
-# DESIGN SYSTEM : BENTO SPORTS UI (INSPIRATION STATZO & MODERN MOBILE APP)
+# CSS PREMIUM : NAVBAR ZYRON STYLE (ATHLETIC GEAR WEBSITE) + CARTES BENTO
 # ---------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
 .stApp {
-    background: #0B0E17 !important;
+    background: #090D16 !important;
     color: #F8FAFC !important;
+}
+
+/* Résolution définitive du haut coupé : masquage de l'en-tête natif Streamlit */
+[data-testid="stHeader"], header[data-testid="stHeader"] {
+    display: none !important;
+    height: 0 !important;
 }
 
 [data-testid="stSidebar"], section[data-testid="stSidebar"], [data-testid="collapsedControl"] {
     display: none !important;
 }
 
+/* Dégagement du haut pour afficher la navbar sans aucun rognage */
 .block-container {
-    max-width: 1220px !important;
-    padding-top: 1.2rem !important;
+    max-width: 1240px !important;
+    padding-top: 2rem !important;
     padding-bottom: 4rem !important;
 }
 
+/* Formulaires et listes déroulantes */
 label, [data-testid="stWidgetLabel"] {
-    color: #F1F5F9 !important;
+    color: #E2E8F0 !important;
     font-weight: 700 !important;
     font-size: 0.88rem !important;
     margin-bottom: 5px !important;
 }
 div[data-baseweb="select"] > div {
-    background: #131A29 !important;
+    background: #111726 !important;
     border: 1.5px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 14px !important;
-    padding: 2px 4px !important;
+    padding: 3px 6px !important;
 }
 div[data-baseweb="select"] * {
     color: #FFFFFF !important;
     font-weight: 600 !important;
 }
 
-/* Header & Dock Navigation */
-.app-header {
+/* -------------------------------------------------------------------------
+   NAVBAR ZYRON STYLE (INSPIRATION ATHLETIC WEBSITE DIRECT)
+------------------------------------------------------------------------- */
+.zyron-navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(19, 26, 41, 0.85);
-    backdrop-filter: blur(14px);
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
-    padding: 12px 20px;
-    margin-bottom: 16px;
+    border-radius: 20px;
+    padding: 14px 26px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
-.brand-box {
+
+.zyron-logo {
+    font-weight: 900;
+    font-size: 1.32rem;
+    letter-spacing: -0.5px;
+    color: #FFFFFF;
+    text-transform: uppercase;
+}
+.zyron-logo span {
+    color: #00F0FF;
+}
+
+/* Liens de navigation centraux */
+.zyron-menu {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-weight: 900;
-    font-size: 1.3rem;
-    letter-spacing: -0.4px;
-    color: #FFFFFF;
+    gap: 28px;
 }
-.brand-box span {
-    color: #00F0FF;
-}
-.badge-live {
-    background: rgba(0, 240, 255, 0.12);
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    color: #00F0FF;
-    font-size: 0.68rem;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 12px;
-}
-
-div[data-testid="stHorizontalBlock"] button {
-    background: #131A29 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 14px !important;
-    color: #94A3B8 !important;
+.zyron-item {
+    text-decoration: none !important;
+    color: #8E9BAE !important;
+    font-size: 0.82rem !important;
     font-weight: 700 !important;
-    font-size: 0.84rem !important;
-    padding: 10px 8px !important;
-    transition: all 0.2s ease !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    transition: color 0.2s ease, transform 0.2s ease !important;
+    padding-bottom: 3px;
+    position: relative;
 }
-div[data-testid="stHorizontalBlock"] button:hover {
-    background: rgba(0, 240, 255, 0.12) !important;
-    border-color: rgba(0, 240, 255, 0.4) !important;
+.zyron-item:hover {
     color: #FFFFFF !important;
-    transform: translateY(-2px) !important;
+}
+.zyron-item.active {
+    color: #00F0FF !important;
+    font-weight: 800 !important;
+    border-bottom: 2px solid #00F0FF;
 }
 
-/* CARTE JOUEUR BENTO BOX */
+/* Bouton action à droite */
+.zyron-cta {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1.5px solid rgba(0, 240, 255, 0.35);
+    color: #00F0FF;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 6px 16px;
+    border-radius: 24px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-decoration: none !important;
+}
+
+/* -------------------------------------------------------------------------
+   CARTES JOUEUR BENTO BOX COMPACTES (INSPIRATION STATZO)
+------------------------------------------------------------------------- */
 .bento-card {
-    background: #121826;
+    background: #111726;
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 18px;
     padding: 14px;
@@ -174,8 +205,8 @@ div[data-testid="stHorizontalBlock"] button:hover {
 }
 .bento-card:hover {
     transform: translateY(-3px);
-    border-color: rgba(0, 240, 255, 0.4);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 240, 255, 0.1);
+    border-color: rgba(0, 240, 255, 0.45);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 240, 255, 0.12);
 }
 
 .player-hero-banner {
@@ -222,7 +253,7 @@ div[data-testid="stHorizontalBlock"] button:hover {
 }
 .star-on {
     color: #FFD700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.85);
 }
 .star-link:hover {
     transform: scale(1.25);
@@ -258,7 +289,7 @@ div[data-testid="stHorizontalBlock"] button:hover {
     gap: 6px;
 }
 .bento-tile {
-    background: #0D121D;
+    background: #0C111C;
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 10px;
     padding: 8px 4px;
@@ -289,8 +320,12 @@ div[data-testid="stHorizontalBlock"] button:hover {
     margin-top: 3px;
 }
 
-@media (max-width: 768px) {
-    .block-container { padding: 0.8rem !important; }
+@media (max-width: 820px) {
+    .block-container { padding-top: 1rem !important; }
+    .zyron-navbar { flex-direction: column; gap: 12px; padding: 12px 16px; }
+    .zyron-menu { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .zyron-item { font-size: 0.74rem !important; }
+    .zyron-cta { display: none; }
     .hero-name { font-size: 1.15rem; }
     .bento-val { font-size: 1.05rem; }
 }
@@ -298,6 +333,9 @@ div[data-testid="stHorizontalBlock"] button:hover {
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+# ---------------------------------------------------------------------------
+# CONFIGURATION DES LIGUES
+# ---------------------------------------------------------------------------
 LEAGUES = {
     "Ligue 1 (France)": {"code": "fra.1", "flag": "FRA"},
     "Premier League (Angleterre)": {"code": "eng.1", "flag": "ANG"},
@@ -481,44 +519,30 @@ def render_bento_card(player, rank_num=None):
     st.markdown(html_content, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# HEADER & DOCK NAVIGATION
+# NAVBAR ZYRON STYLE (ATHLETIC GEAR WEBSITE LOOK)
 # ---------------------------------------------------------------------------
-st.markdown("""
-<div class="app-header">
-    <div class="brand-box">&#9889; <span>GOAL</span> SNIPER</div>
-    <div class="badge-live">RADAR LIVE &bull; 2026/27</div>
+current_tab = st.session_state.nav_tab
+fav_count = len(st.session_state.favorites)
+
+navbar_html = f"""
+<div class="zyron-navbar">
+    <div class="zyron-logo">GOAL <span>SNIPER</span>.</div>
+    <div class="zyron-menu">
+        <a href="?tab=top10" target="_self" class="zyron-item {'active' if current_tab == 'top10' else ''}">Top 10 Championnat</a>
+        <a href="?tab=top5" target="_self" class="zyron-item {'active' if current_tab == 'top5' else ''}">Top 5 Équipe</a>
+        <a href="?tab=favoris" target="_self" class="zyron-item {'active' if current_tab == 'favoris' else ''}">Favoris ({fav_count})</a>
+        <a href="?tab=profil" target="_self" class="zyron-item {'active' if current_tab == 'profil' else ''}">Profil</a>
+        <a href="?tab=reglages" target="_self" class="zyron-item {'active' if current_tab == 'reglages' else ''}">Paramètres</a>
+    </div>
+    <div class="zyron-cta">Radar 2026/27</div>
 </div>
-""", unsafe_allow_html=True)
-
-b1, b2, b3, b4, b5 = st.columns(5)
-with b1:
-    if st.button("Top 10 Ligue", use_container_width=True):
-        st.session_state.nav_tab = "top10"
-        st.rerun()
-with b2:
-    if st.button("Top 5 Equipe", use_container_width=True):
-        st.session_state.nav_tab = "top5"
-        st.rerun()
-with b3:
-    fav_count = len(st.session_state.favorites)
-    if st.button(f"Favoris ({fav_count})", use_container_width=True):
-        st.session_state.nav_tab = "favoris"
-        st.rerun()
-with b4:
-    if st.button("Mon Profil", use_container_width=True):
-        st.session_state.nav_tab = "profil"
-        st.rerun()
-with b5:
-    if st.button("Parametres", use_container_width=True):
-        st.session_state.nav_tab = "reglages"
-        st.rerun()
-
-st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+"""
+st.markdown(navbar_html, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # VUE 1 : TOP 10 PAR CHAMPIONNAT (3 COLONNES DENSES COMPACTES)
 # ---------------------------------------------------------------------------
-if st.session_state.nav_tab == "top10":
+if current_tab == "top10":
     selected_league_label = st.selectbox("Championnat :", list(LEAGUES.keys()))
     league_data = LEAGUES[selected_league_label]
 
@@ -535,7 +559,7 @@ if st.session_state.nav_tab == "top10":
                 fallback_players.append(t_roster[0])
         top_scorers = fallback_players
 
-    st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>[{league_data['flag']}] Top Performers &bull; {selected_league_label}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>🏆 Top Performers &bull; {selected_league_label}</div>", unsafe_allow_html=True)
     
     cols = st.columns(3)
     for idx, player in enumerate(top_scorers[:12], start=1):
@@ -545,7 +569,7 @@ if st.session_state.nav_tab == "top10":
 # ---------------------------------------------------------------------------
 # VUE 2 : TOP 5 PAR EQUIPE
 # ---------------------------------------------------------------------------
-elif st.session_state.nav_tab == "top5":
+elif current_tab == "top5":
     c1, c2 = st.columns(2)
     with c1:
         league_label = st.selectbox("Championnat :", list(LEAGUES.keys()), key="sel_l")
@@ -565,7 +589,7 @@ elif st.session_state.nav_tab == "top5":
         with st.spinner(f"Analyse de {chosen_team_name}..."):
             top_players = fetch_team_roster_profiles(l_code, chosen_team["id"], chosen_team_name)
 
-        st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>Top Forces Offensives &bull; {chosen_team_name}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>🎯 Top Forces Offensives &bull; {chosen_team_name}</div>", unsafe_allow_html=True)
         if not top_players:
             st.info("Effectif indisponible pour ce club.")
         else:
@@ -577,8 +601,8 @@ elif st.session_state.nav_tab == "top5":
 # ---------------------------------------------------------------------------
 # VUE 3 : MES FAVORIS
 # ---------------------------------------------------------------------------
-elif st.session_state.nav_tab == "favoris":
-    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>Ma Selection de Buteurs</div>", unsafe_allow_html=True)
+elif current_tab == "favoris":
+    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⭐ Ma Selection de Buteurs</div>", unsafe_allow_html=True)
     favs = st.session_state.favorites
 
     if not favs:
@@ -592,12 +616,12 @@ elif st.session_state.nav_tab == "favoris":
 # ---------------------------------------------------------------------------
 # VUE 4 : MON PROFIL
 # ---------------------------------------------------------------------------
-elif st.session_state.nav_tab == "profil":
-    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>Mon Espace Parieur</div>", unsafe_allow_html=True)
+elif current_tab == "profil":
+    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>👤 Mon Espace Parieur</div>", unsafe_allow_html=True)
     p1, p2 = st.columns([1, 2])
     with p1:
         st.markdown(f'''
-            <div style="background:#121826; border:1px solid rgba(0, 240, 255, 0.3); border-radius:18px; padding:24px; text-align:center;">
+            <div style="background:#111726; border:1px solid rgba(0, 240, 255, 0.3); border-radius:18px; padding:24px; text-align:center;">
                 <div style="font-size:3rem; color:#00F0FF;">PRO</div>
                 <h3 style="margin:8px 0 2px 0; color:#FFFFFF;">{st.session_state.profile_name}</h3>
                 <span style="background:rgba(0, 240, 255, 0.15); color:#00F0FF; padding:3px 10px; border-radius:8px; font-weight:800; font-size:0.75rem;">MEMBRE ACTIF</span>
@@ -618,8 +642,8 @@ elif st.session_state.nav_tab == "profil":
 # ---------------------------------------------------------------------------
 # VUE 5 : PARAMETRES
 # ---------------------------------------------------------------------------
-elif st.session_state.nav_tab == "reglages":
-    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>Parametres & Cache</div>", unsafe_allow_html=True)
+elif current_tab == "reglages":
+    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⚙️ Parametres & Cache</div>", unsafe_allow_html=True)
     if st.button("Vider le cache et resynchroniser les donnees ESPN", type="primary"):
         st.cache_data.clear()
         st.success("Cache vide avec succes !")
