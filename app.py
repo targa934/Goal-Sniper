@@ -35,51 +35,21 @@ if "favorites" not in st.session_state:
 if "profile_name" not in st.session_state:
     st.session_state.profile_name = "Sniper_Pro"
 
-# Traitement des paramètres d'URL (Navigation Zyron & Favoris)
-params = st.query_params
-
-if "tab" in params:
-    st.session_state.nav_tab = params.get("tab")
-
 if "nav_tab" not in st.session_state:
     st.session_state.nav_tab = "top10"
 
-if "toggle_fav" in params:
-    fav_id = params.get("toggle_fav")
-    if fav_id in st.session_state.favorites:
-        del st.session_state.favorites[fav_id]
-        save_stored_favorites(st.session_state.favorites)
-    else:
-        p_name = params.get("fav_name", "Joueur")
-        p_team = params.get("fav_team", "Club")
-        p_pos = params.get("fav_pos", "ATT")
-        p_nat = params.get("fav_nat", "Europe")
-        p_goals = params.get("fav_goals", "0")
-        st.session_state.favorites[fav_id] = {
-            "id": fav_id,
-            "name": p_name,
-            "team": p_team,
-            "pos": p_pos,
-            "nationality": p_nat,
-            "goals": int(p_goals) if p_goals.isdigit() else 0,
-            "assists": 1 if int(p_goals) > 2 else 0 if p_goals.isdigit() else 0,
-            "matches": 6 if p_goals != "0" else "-",
-            "shots_pg": round(1.8 + (int(p_goals) * 0.4), 1) if p_goals.isdigit() and int(p_goals) > 0 else "-",
-            "shots_on_target": round(0.8 + (int(p_goals) * 0.3), 1) if p_goals.isdigit() and int(p_goals) > 0 else "-",
-            "avg_mins": "78m"
-        }
-        save_stored_favorites(st.session_state.favorites)
-    st.query_params.clear()
-    st.rerun()
-
 # ---------------------------------------------------------------------------
-# CSS PREMIUM : NAVBAR ZYRON STYLE (ATHLETIC GEAR WEBSITE) + CARTES BENTO
+# CSS PREMIUM & FLUIDITÉ MAXIMALE (ZÉRO FLASH BLANC)
 # ---------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
 
-html, body, [class*="css"] {
+/* Empêche le flash blanc du navigateur */
+html, body {
+    background-color: #090D16 !important;
+    background: #090D16 !important;
+    color: #F8FAFC !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
@@ -88,7 +58,6 @@ html, body, [class*="css"] {
     color: #F8FAFC !important;
 }
 
-/* Résolution définitive du haut coupé : masquage de l'en-tête natif Streamlit */
 [data-testid="stHeader"], header[data-testid="stHeader"] {
     display: none !important;
     height: 0 !important;
@@ -98,10 +67,9 @@ html, body, [class*="css"] {
     display: none !important;
 }
 
-/* Dégagement du haut pour afficher la navbar sans aucun rognage */
 .block-container {
     max-width: 1240px !important;
-    padding-top: 2rem !important;
+    padding-top: 1.8rem !important;
     padding-bottom: 4rem !important;
 }
 
@@ -124,25 +92,23 @@ div[data-baseweb="select"] * {
 }
 
 /* -------------------------------------------------------------------------
-   NAVBAR ZYRON STYLE (INSPIRATION ATHLETIC WEBSITE DIRECT)
+   NAVBAR ZYRON FLUIDE (STYLE LIENS PURS, SANS RECHARGEMENT DE PAGE)
 ------------------------------------------------------------------------- */
-.zyron-navbar {
+.zyron-navbar-shell {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(17, 24, 39, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(17, 24, 39, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
-    padding: 14px 26px;
-    margin-bottom: 24px;
+    padding: 10px 22px;
+    margin-bottom: 22px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 .zyron-logo {
     font-weight: 900;
-    font-size: 1.32rem;
+    font-size: 1.3rem;
     letter-spacing: -0.5px;
     color: #FFFFFF;
     text-transform: uppercase;
@@ -151,48 +117,46 @@ div[data-baseweb="select"] * {
     color: #00F0FF;
 }
 
-/* Liens de navigation centraux */
-.zyron-menu {
-    display: flex;
-    align-items: center;
-    gap: 28px;
+.zyron-pill-badge {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1.5px solid rgba(0, 240, 255, 0.35);
+    color: #00F0FF;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 5px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
-.zyron-item {
-    text-decoration: none !important;
+
+/* Transformation des boutons de navigation Streamlit en liens textuels Zyron */
+div.zyron-nav-container div[data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+div.zyron-nav-container button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     color: #8E9BAE !important;
     font-size: 0.82rem !important;
     font-weight: 700 !important;
     letter-spacing: 0.5px !important;
     text-transform: uppercase !important;
-    transition: color 0.2s ease, transform 0.2s ease !important;
-    padding-bottom: 3px;
-    position: relative;
+    padding: 6px 10px !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
 }
-.zyron-item:hover {
+div.zyron-nav-container button:hover {
     color: #FFFFFF !important;
-}
-.zyron-item.active {
-    color: #00F0FF !important;
-    font-weight: 800 !important;
-    border-bottom: 2px solid #00F0FF;
-}
-
-/* Bouton action à droite */
-.zyron-cta {
-    background: rgba(0, 240, 255, 0.1);
-    border: 1.5px solid rgba(0, 240, 255, 0.35);
-    color: #00F0FF;
-    font-size: 0.74rem;
-    font-weight: 800;
-    padding: 6px 16px;
-    border-radius: 24px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    text-decoration: none !important;
+    background: rgba(255, 255, 255, 0.05) !important;
 }
 
 /* -------------------------------------------------------------------------
-   CARTES JOUEUR BENTO BOX COMPACTES (INSPIRATION STATZO)
+   CARTES JOUEUR BENTO BOX
 ------------------------------------------------------------------------- */
 .bento-card {
     background: #111726;
@@ -241,25 +205,6 @@ div[data-baseweb="select"] * {
     border-radius: 6px;
 }
 
-.star-link {
-    text-decoration: none !important;
-    font-size: 1.55rem;
-    line-height: 1;
-    display: inline-block;
-    transition: transform 0.2s ease, color 0.2s ease;
-}
-.star-off {
-    color: rgba(255, 255, 255, 0.55);
-}
-.star-on {
-    color: #FFD700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.85);
-}
-.star-link:hover {
-    transform: scale(1.25);
-    color: #FFD700 !important;
-}
-
 .hero-name {
     font-size: 1.25rem;
     font-weight: 900;
@@ -283,6 +228,31 @@ div[data-baseweb="select"] * {
     border-radius: 6px;
 }
 
+/* Bouton favori pur sans aucun carré blanc */
+div.fav-slot-btn button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: unset !important;
+    min-width: unset !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1.55rem !important;
+    line-height: 1 !important;
+    color: #FFD700 !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, text-shadow 0.2s ease !important;
+}
+div.fav-slot-btn button:hover {
+    transform: scale(1.3) !important;
+    color: #FFE55C !important;
+    text-shadow: 0 0 14px rgba(255, 215, 0, 0.9) !important;
+}
+
+/* Grille Bento */
 .bento-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -322,10 +292,6 @@ div[data-baseweb="select"] * {
 
 @media (max-width: 820px) {
     .block-container { padding-top: 1rem !important; }
-    .zyron-navbar { flex-direction: column; gap: 12px; padding: 12px 16px; }
-    .zyron-menu { gap: 14px; flex-wrap: wrap; justify-content: center; }
-    .zyron-item { font-size: 0.74rem !important; }
-    .zyron-cta { display: none; }
     .hero-name { font-size: 1.15rem; }
     .bento-val { font-size: 1.05rem; }
 }
@@ -334,7 +300,7 @@ div[data-baseweb="select"] * {
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# CONFIGURATION DES LIGUES
+# DONNÉES & ENDPOINTS
 # ---------------------------------------------------------------------------
 LEAGUES = {
     "Ligue 1 (France)": {"code": "fra.1", "flag": "FRA"},
@@ -479,7 +445,7 @@ def get_league_top_10(league_code):
     return top_list[:12]
 
 # ---------------------------------------------------------------------------
-# RENDU CARTE BENTO BOX INDIVISIBLE
+# RENDU CARTE BENTO BOX (FLUIDE SANS RELOAD NAVIGATEUR)
 # ---------------------------------------------------------------------------
 def render_bento_card(player, rank_num=None):
     pid = str(player.get("id", player.get("name")))
@@ -487,17 +453,15 @@ def render_bento_card(player, rank_num=None):
 
     rank_text = f"#{rank_num}" if rank_num else "PRO"
     banner_class = "rank-gold" if rank_num == 1 else "rank-silver" if rank_num == 2 else "rank-bronze" if rank_num == 3 else ""
-    star_class = "star-on" if is_fav else "star-off"
-    star_icon = "\u2605" if is_fav else "\u2606"
 
-    fav_url = f"?toggle_fav={pid}&fav_name={player.get('name')}&fav_team={player.get('team')}&fav_pos={player.get('pos')}&fav_nat={player.get('nationality')}&fav_goals={player.get('goals', 0)}"
-
-    html_content = (
+    # Construction du conteneur Bento complet
+    c_card, c_fav = st.columns([0.88, 0.12])
+    
+    top_html = (
         f'<div class="bento-card">'
         f'<div class="player-hero-banner {banner_class}">'
         f'<div class="top-pills-row">'
         f'<span class="tag-season">TOP {rank_text} &bull; 2026/27</span>'
-        f'<a href="{fav_url}" target="_self" class="star-link {star_class}" title="Favori">{star_icon}</a>'
         f'</div>'
         f'<div class="hero-name">{player.get("name")}</div>'
         f'<div class="hero-sub">'
@@ -516,33 +480,55 @@ def render_bento_card(player, rank_num=None):
         f'</div>'
         f'</div>'
     )
-    st.markdown(html_content, unsafe_allow_html=True)
+    st.markdown(top_html, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# NAVBAR ZYRON STYLE (ATHLETIC GEAR WEBSITE LOOK)
+# NAVBAR ZYRON FLUIDE (SANS HARD RELOAD DU NAVIGATEUR)
 # ---------------------------------------------------------------------------
-current_tab = st.session_state.nav_tab
-fav_count = len(st.session_state.favorites)
-
-navbar_html = f"""
-<div class="zyron-navbar">
+st.markdown("""
+<div class="zyron-navbar-shell">
     <div class="zyron-logo">GOAL <span>SNIPER</span>.</div>
-    <div class="zyron-menu">
-        <a href="?tab=top10" target="_self" class="zyron-item {'active' if current_tab == 'top10' else ''}">Top 10 Championnat</a>
-        <a href="?tab=top5" target="_self" class="zyron-item {'active' if current_tab == 'top5' else ''}">Top 5 Équipe</a>
-        <a href="?tab=favoris" target="_self" class="zyron-item {'active' if current_tab == 'favoris' else ''}">Favoris ({fav_count})</a>
-        <a href="?tab=profil" target="_self" class="zyron-item {'active' if current_tab == 'profil' else ''}">Profil</a>
-        <a href="?tab=reglages" target="_self" class="zyron-item {'active' if current_tab == 'reglages' else ''}">Paramètres</a>
-    </div>
-    <div class="zyron-cta">Radar 2026/27</div>
+    <div class="zyron-pill-badge">Radar Live 2026/27</div>
 </div>
-"""
-st.markdown(navbar_html, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
+# Liens ultra-légers sous le logo qui changent d'onglet INSTANTANÉMENT sans recharger
+st.markdown('<div class="zyron-nav-container">', unsafe_allow_html=True)
+n1, n2, n3, n4, n5 = st.columns(5)
+with n1:
+    lbl_1 = "**TOP 10 CHAMPIONNAT**" if st.session_state.nav_tab == "top10" else "Top 10 Championnat"
+    if st.button(lbl_1, key="nav_btn_top10", use_container_width=True):
+        st.session_state.nav_tab = "top10"
+        st.rerun()
+with n2:
+    lbl_2 = "**TOP 5 ÉQUIPE**" if st.session_state.nav_tab == "top5" else "Top 5 Équipe"
+    if st.button(lbl_2, key="nav_btn_top5", use_container_width=True):
+        st.session_state.nav_tab = "top5"
+        st.rerun()
+with n3:
+    count_fav = len(st.session_state.favorites)
+    lbl_3 = f"**FAVORIS ({count_fav})**" if st.session_state.nav_tab == "favoris" else f"Favoris ({count_fav})"
+    if st.button(lbl_3, key="nav_btn_fav", use_container_width=True):
+        st.session_state.nav_tab = "favoris"
+        st.rerun()
+with n4:
+    lbl_4 = "**MON PROFIL**" if st.session_state.nav_tab == "profil" else "Mon Profil"
+    if st.button(lbl_4, key="nav_btn_prof", use_container_width=True):
+        st.session_state.nav_tab = "profil"
+        st.rerun()
+with n5:
+    lbl_5 = "**PARAMÈTRES**" if st.session_state.nav_tab == "reglages" else "Paramètres"
+    if st.button(lbl_5, key="nav_btn_set", use_container_width=True):
+        st.session_state.nav_tab = "reglages"
+        st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# VUE 1 : TOP 10 PAR CHAMPIONNAT (3 COLONNES DENSES COMPACTES)
+# VUE 1 : TOP 10 PAR CHAMPIONNAT
 # ---------------------------------------------------------------------------
-if current_tab == "top10":
+if st.session_state.nav_tab == "top10":
     selected_league_label = st.selectbox("Championnat :", list(LEAGUES.keys()))
     league_data = LEAGUES[selected_league_label]
 
@@ -569,7 +555,7 @@ if current_tab == "top10":
 # ---------------------------------------------------------------------------
 # VUE 2 : TOP 5 PAR EQUIPE
 # ---------------------------------------------------------------------------
-elif current_tab == "top5":
+elif st.session_state.nav_tab == "top5":
     c1, c2 = st.columns(2)
     with c1:
         league_label = st.selectbox("Championnat :", list(LEAGUES.keys()), key="sel_l")
@@ -601,12 +587,12 @@ elif current_tab == "top5":
 # ---------------------------------------------------------------------------
 # VUE 3 : MES FAVORIS
 # ---------------------------------------------------------------------------
-elif current_tab == "favoris":
+elif st.session_state.nav_tab == "favoris":
     st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⭐ Ma Selection de Buteurs</div>", unsafe_allow_html=True)
     favs = st.session_state.favorites
 
     if not favs:
-        st.info("Aucun joueur favori pour l'instant. Cliquez sur l'etoile doree en haut d'une carte pour l'enregistrer ici.")
+        st.info("Aucun joueur favori pour l'instant.")
     else:
         cols = st.columns(3)
         for idx, (pid, p_data) in enumerate(favs.items()):
@@ -616,7 +602,7 @@ elif current_tab == "favoris":
 # ---------------------------------------------------------------------------
 # VUE 4 : MON PROFIL
 # ---------------------------------------------------------------------------
-elif current_tab == "profil":
+elif st.session_state.nav_tab == "profil":
     st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>👤 Mon Espace Parieur</div>", unsafe_allow_html=True)
     p1, p2 = st.columns([1, 2])
     with p1:
@@ -642,7 +628,7 @@ elif current_tab == "profil":
 # ---------------------------------------------------------------------------
 # VUE 5 : PARAMETRES
 # ---------------------------------------------------------------------------
-elif current_tab == "reglages":
+elif st.session_state.nav_tab == "reglages":
     st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⚙️ Parametres & Cache</div>", unsafe_allow_html=True)
     if st.button("Vider le cache et resynchroniser les donnees ESPN", type="primary"):
         st.cache_data.clear()
