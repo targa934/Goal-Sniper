@@ -35,6 +35,9 @@ if "favorites" not in st.session_state:
 if "profile_name" not in st.session_state:
     st.session_state.profile_name = "Sniper_Pro"
 
+# ---------------------------------------------------------------------------
+# STYLE GRAPHIQUE ÉPURÉ & RESPONSIVE (CADRES UNIFIÉS & ÉTOILE SANS AUCUN CARRÉ)
+# ---------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,800;0,900;1,800&family=JetBrains+Mono:wght@500;700;800&display=swap');
@@ -48,6 +51,7 @@ html, body, [class*="css"] {
     color: #F0F4F8;
 }
 
+/* En-tête de page */
 .header-hero {
     background: linear-gradient(135deg, rgba(20, 28, 48, 0.8) 0%, rgba(10, 14, 24, 0.9) 100%);
     border: 1px solid rgba(0, 230, 118, 0.25);
@@ -72,33 +76,61 @@ html, body, [class*="css"] {
     font-size: 0.92rem;
 }
 
-/* Carte Joueur Type EA Sports FC */
-.player-card-box {
-    background: linear-gradient(145deg, #131b2e 0%, #0e1422 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
-    padding: 16px 18px;
-    margin-bottom: 16px;
-    position: relative;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
-    transition: all 0.25s ease-in-out;
+/* Redéfinition du conteneur Streamlit en VRAIE carte EA Sports unifiée */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: linear-gradient(145deg, #131b2e 0%, #0e1422 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 18px !important;
+    padding: 16px 18px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45) !important;
+    transition: all 0.25s ease-in-out !important;
 }
-.player-card-box:hover {
-    transform: translateY(-3px);
-    border-color: rgba(0, 230, 118, 0.5);
-    box-shadow: 0 12px 28px rgba(0, 230, 118, 0.12);
-}
-.player-card-box.rank-top {
-    border-top: 3px solid #FFD700;
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    transform: translateY(-3px) !important;
+    border-color: rgba(0, 230, 118, 0.5) !important;
+    box-shadow: 0 12px 28px rgba(0, 230, 118, 0.12) !important;
 }
 
-.card-top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+/* Suppression TOTALE du cadre, fond blanc et padding du bouton favori */
+div[data-testid="stButton"] > button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    color: #FFD700 !important;
+    font-size: 1.85rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: unset !important;
+    width: auto !important;
+    height: auto !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, text-shadow 0.2s ease, color 0.2s ease !important;
 }
 
+/* Survol de l'icône : agrandissement et lueur dorée */
+div[data-testid="stButton"] > button:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    color: #FFE55C !important;
+    transform: scale(1.3) !important;
+    text-shadow: 0 0 14px rgba(255, 215, 0, 0.9) !important;
+}
+
+div[data-testid="stButton"] > button:focus,
+div[data-testid="stButton"] > button:active {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #FFD700 !important;
+}
+
+/* Typographies et badges intérieurs */
 .rank-badge {
     background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
     color: #000;
@@ -122,6 +154,18 @@ html, body, [class*="css"] {
     color: #94A3B8;
     margin-top: 4px;
 }
+
+.tag-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.tag-fw { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+.tag-mf { background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
+.tag-club { background: rgba(255, 255, 255, 0.08); color: #E2E8F0; }
 
 .stats-grid {
     display: grid;
@@ -150,60 +194,6 @@ html, body, [class*="css"] {
     color: #94A3B8;
     letter-spacing: 0.5px;
     margin-top: 2px;
-}
-
-.tag-pill {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-.tag-fw { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-.tag-mf { background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
-.tag-club { background: rgba(255, 255, 255, 0.08); color: #E2E8F0; }
-
-/* Boutons Favoris Streamlit transformés en icône dorée ronde */
-div[data-testid="stButton"] button.fav-btn-unselected {
-    background: transparent !important;
-    border: 1.5px solid #FFD700 !important;
-    color: #FFD700 !important;
-    border-radius: 50% !important;
-    width: 38px !important;
-    height: 38px !important;
-    padding: 0 !important;
-    font-size: 1.15rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: all 0.2s ease-in-out !important;
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.15) !important;
-}
-div[data-testid="stButton"] button.fav-btn-unselected:hover {
-    background: rgba(255, 215, 0, 0.15) !important;
-    transform: scale(1.1) !important;
-}
-
-div[data-testid="stButton"] button.fav-btn-selected {
-    background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%) !important;
-    border: 1.5px solid #FFD700 !important;
-    color: #000000 !important;
-    border-radius: 50% !important;
-    width: 38px !important;
-    height: 38px !important;
-    padding: 0 !important;
-    font-size: 1.15rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-weight: 900 !important;
-    transition: all 0.2s ease-in-out !important;
-    box-shadow: 0 0 14px rgba(255, 215, 0, 0.6) !important;
-}
-div[data-testid="stButton"] button.fav-btn-selected:hover {
-    transform: scale(1.1) !important;
-    box-shadow: 0 0 18px rgba(255, 215, 0, 0.8) !important;
 }
 
 @media (max-width: 768px) {
@@ -377,21 +367,17 @@ def get_league_top_10(league_code):
     return top_list[:10]
 
 # ---------------------------------------------------------------------------
-# RENDU CARTE JOUEUR AVEC BOUTON ÉTOILE DORÉ INTÉGRÉ EN HAUT À DROITE
+# RENDU CARTE JOUEUR AVEC CADRE COMPLET ET ÉTOILE DORÉE MINIMALISTE SANS CADRE
 # ---------------------------------------------------------------------------
 def render_player_card(player, rank_num=None):
     pid = str(player.get("id", player.get("name")))
     is_fav = pid in st.session_state.favorites
 
     rank_badge_html = f'<span class="rank-badge">TOP #{rank_num}</span>' if rank_num else ''
-    rank_top_cls = 'rank-top' if rank_num and rank_num <= 3 else ''
     pos_cls = 'tag-fw' if ('F' in player.get('pos', '') or 'A' in player.get('pos', '')) else 'tag-mf'
 
-    with st.container():
-        # Début de la carte enveloppante
-        st.markdown(f'<div class="player-card-box {rank_top_cls}">', unsafe_allow_html=True)
-        
-        # En-tête : Infos joueur à gauche, Bouton favori doré intégré à droite
+    # Le conteneur avec border=True englobe l'intégralité de la carte (titre + bouton + stats)
+    with st.container(border=True):
         col_info, col_fav = st.columns([0.88, 0.12])
         
         with col_info:
@@ -408,11 +394,7 @@ def render_player_card(player, rank_num=None):
 
         with col_fav:
             star_symbol = "★" if is_fav else "☆"
-            btn_class = "fav-btn-selected" if is_fav else "fav-btn-unselected"
             btn_help = "Retirer des favoris" if is_fav else "Ajouter aux favoris"
-            
-            # Injection de la classe CSS sur le bouton
-            st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
             if st.button(star_symbol, key=f"fav_{pid}", help=btn_help):
                 if is_fav:
                     del st.session_state.favorites[pid]
@@ -423,9 +405,7 @@ def render_player_card(player, rank_num=None):
                     save_stored_favorites(st.session_state.favorites)
                     st.toast(f"{player.get('name')} ajouté aux favoris !", icon="⭐")
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
-        # Grille de statistiques
         stats_lines = [
             '<div class="stats-grid">',
             f'<div class="stat-box"><div class="stat-value">{player.get("goals", 0)}</div><div class="stat-label">⚽ Buts récents</div></div>',
@@ -434,8 +414,7 @@ def render_player_card(player, rank_num=None):
             f'<div class="stat-box"><div class="stat-value">{player.get("shots_pg", "-")}</div><div class="stat-label">🎯 Tirs / m</div></div>',
             f'<div class="stat-box"><div class="stat-value">{player.get("shots_on_target", "-")}</div><div class="stat-label">🥅 Cadrés / m</div></div>',
             f'<div class="stat-box"><div class="stat-value">{player.get("avg_mins", "-")}</div><div class="stat-label">⏱️ Temps jeu</div></div>',
-            '</div>',
-            '</div>'  # Fermeture player-card-box
+            '</div>'
         ]
         st.markdown("".join(stats_lines), unsafe_allow_html=True)
 
