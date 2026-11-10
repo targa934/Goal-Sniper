@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 
 st.set_page_config(
     page_title="Goal Sniper | Radar Buteurs",
-    page_icon="\U0001F3AF",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -39,17 +39,13 @@ if "nav_tab" not in st.session_state:
     st.session_state.nav_tab = "top10"
 
 # ---------------------------------------------------------------------------
-# CSS PREMIUM & FLUIDITÉ MAXIMALE (ZÉRO FLASH BLANC)
+# CSS PROPRE, ÉLÉGANT ET SANS CONFLITS VISUELS
 # ---------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
 
-/* Empêche le flash blanc du navigateur */
-html, body {
-    background-color: #090D16 !important;
-    background: #090D16 !important;
-    color: #F8FAFC !important;
+html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
@@ -58,11 +54,10 @@ html, body {
     color: #F8FAFC !important;
 }
 
+/* Masquage de l'en-tête technique Streamlit */
 [data-testid="stHeader"], header[data-testid="stHeader"] {
     display: none !important;
-    height: 0 !important;
 }
-
 [data-testid="stSidebar"], section[data-testid="stSidebar"], [data-testid="collapsedControl"] {
     display: none !important;
 }
@@ -73,99 +68,89 @@ html, body {
     padding-bottom: 4rem !important;
 }
 
-/* Formulaires et listes déroulantes */
-label, [data-testid="stWidgetLabel"] {
+/* -----------------------------------------------------------
+   NAVBAR & BOUTONS DU MENU (FIN DES RECTANGLES BLANCS)
+----------------------------------------------------------- */
+.app-brand-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111726;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 12px 22px;
+    margin-bottom: 12px;
+}
+.brand-title {
+    font-weight: 900;
+    font-size: 1.35rem;
+    color: #FFFFFF;
+    letter-spacing: -0.5px;
+}
+.brand-title span {
+    color: #00F0FF;
+}
+.brand-badge {
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    color: #00F0FF;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+}
+
+/* Boutons de navigation : fond sombre sobre et texte blanc net */
+div[data-testid="stHorizontalBlock"] button {
+    background: #131A29 !important;
+    background-color: #131A29 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 14px !important;
     color: #E2E8F0 !important;
     font-weight: 700 !important;
     font-size: 0.88rem !important;
-    margin-bottom: 5px !important;
+    padding: 10px 14px !important;
+    transition: all 0.2s ease !important;
+}
+div[data-testid="stHorizontalBlock"] button:hover {
+    background: rgba(0, 240, 255, 0.15) !important;
+    border-color: #00F0FF !important;
+    color: #FFFFFF !important;
+    transform: translateY(-2px) !important;
+}
+
+/* -----------------------------------------------------------
+   SÉLECTEURS ET LABELS (CONTRASTE OPTIMAL)
+----------------------------------------------------------- */
+label, [data-testid="stWidgetLabel"] {
+    color: #F1F5F9 !important;
+    font-weight: 800 !important;
+    font-size: 0.92rem !important;
+    margin-bottom: 6px !important;
 }
 div[data-baseweb="select"] > div {
     background: #111726 !important;
-    border: 1.5px solid rgba(255, 255, 255, 0.1) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 14px !important;
-    padding: 3px 6px !important;
+    min-height: 44px !important;
 }
 div[data-baseweb="select"] * {
     color: #FFFFFF !important;
     font-weight: 600 !important;
 }
 
-/* -------------------------------------------------------------------------
-   NAVBAR ZYRON FLUIDE (STYLE LIENS PURS, SANS RECHARGEMENT DE PAGE)
-------------------------------------------------------------------------- */
-.zyron-navbar-shell {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(17, 24, 39, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 10px 22px;
-    margin-bottom: 22px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-}
-
-.zyron-logo {
-    font-weight: 900;
-    font-size: 1.3rem;
-    letter-spacing: -0.5px;
-    color: #FFFFFF;
-    text-transform: uppercase;
-}
-.zyron-logo span {
-    color: #00F0FF;
-}
-
-.zyron-pill-badge {
-    background: rgba(0, 240, 255, 0.1);
-    border: 1.5px solid rgba(0, 240, 255, 0.35);
-    color: #00F0FF;
-    font-size: 0.72rem;
-    font-weight: 800;
-    padding: 5px 14px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-}
-
-/* Transformation des boutons de navigation Streamlit en liens textuels Zyron */
-div.zyron-nav-container div[data-testid="stHorizontalBlock"] {
-    align-items: center !important;
-    gap: 16px !important;
-}
-
-div.zyron-nav-container button {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: #8E9BAE !important;
-    font-size: 0.82rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.5px !important;
-    text-transform: uppercase !important;
-    padding: 6px 10px !important;
-    margin: 0 !important;
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
-}
-div.zyron-nav-container button:hover {
-    color: #FFFFFF !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-}
-
-/* -------------------------------------------------------------------------
-   CARTES JOUEUR BENTO BOX
-------------------------------------------------------------------------- */
+/* -----------------------------------------------------------
+   CARTES JOUEURS BENTO (LISIBLES, SANS FOND SOMBRE INVISIBLE)
+----------------------------------------------------------- */
 .bento-card {
     background: #111726;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 18px;
     padding: 14px;
     margin-bottom: 16px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease;
 }
 .bento-card:hover {
     transform: translateY(-3px);
@@ -177,7 +162,6 @@ div.zyron-nav-container button:hover {
     background: linear-gradient(135deg, #1A44C2 0%, #102B82 100%);
     border-radius: 14px;
     padding: 12px 14px;
-    position: relative;
     margin-bottom: 10px;
 }
 .player-hero-banner.rank-gold {
@@ -197,7 +181,6 @@ div.zyron-nav-container button:hover {
 }
 .tag-season {
     background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(6px);
     color: #FFFFFF;
     font-size: 0.68rem;
     font-weight: 800;
@@ -220,39 +203,15 @@ div.zyron-nav-container button:hover {
     align-items: center;
 }
 .pill-info {
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(0, 0, 0, 0.35);
     color: #E2E8F0;
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 6px;
 }
 
-/* Bouton favori pur sans aucun carré blanc */
-div.fav-slot-btn button {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    min-height: unset !important;
-    min-width: unset !important;
-    width: 32px !important;
-    height: 32px !important;
-    font-size: 1.55rem !important;
-    line-height: 1 !important;
-    color: #FFD700 !important;
-    cursor: pointer !important;
-    transition: transform 0.2s ease, text-shadow 0.2s ease !important;
-}
-div.fav-slot-btn button:hover {
-    transform: scale(1.3) !important;
-    color: #FFE55C !important;
-    text-shadow: 0 0 14px rgba(255, 215, 0, 0.9) !important;
-}
-
-/* Grille Bento */
+/* Grille Bento pour les métriques */
 .bento-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -273,8 +232,8 @@ div.fav-slot-btn button:hover {
 .bento-val {
     font-family: 'JetBrains Mono', monospace;
     font-weight: 800;
-    font-size: 1.15rem;
-    line-height: 1;
+    font-size: 1.18rem;
+    line-height: 1.1;
     color: #FFFFFF;
 }
 .bento-val.neon-cyan { color: #00F0FF; }
@@ -282,18 +241,34 @@ div.fav-slot-btn button:hover {
 .bento-val.neon-green { color: #00E676; }
 
 .bento-lbl {
-    font-size: 0.62rem;
+    font-size: 0.64rem;
     font-weight: 700;
     text-transform: uppercase;
-    color: #64748B;
+    color: #94A3B8;
     letter-spacing: 0.3px;
     margin-top: 3px;
 }
 
-@media (max-width: 820px) {
-    .block-container { padding-top: 1rem !important; }
-    .hero-name { font-size: 1.15rem; }
-    .bento-val { font-size: 1.05rem; }
+/* Boutons favoris compacts sans bordures carrées */
+div[data-testid="stColumn"] div.fav-btn-box button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 1.55rem !important;
+    color: #FFD700 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: unset !important;
+    min-height: unset !important;
+    line-height: 1 !important;
+    transition: transform 0.2s ease !important;
+}
+div[data-testid="stColumn"] div.fav-btn-box button:hover {
+    transform: scale(1.25) !important;
+    color: #FFE55C !important;
 }
 </style>
 """
@@ -445,7 +420,7 @@ def get_league_top_10(league_code):
     return top_list[:12]
 
 # ---------------------------------------------------------------------------
-# RENDU CARTE BENTO BOX (FLUIDE SANS RELOAD NAVIGATEUR)
+# RENDU CARTE BENTO BOX PROPRE ET PARFAITEMENT LISIBLE
 # ---------------------------------------------------------------------------
 def render_bento_card(player, rank_num=None):
     pid = str(player.get("id", player.get("name")))
@@ -454,89 +429,100 @@ def render_bento_card(player, rank_num=None):
     rank_text = f"#{rank_num}" if rank_num else "PRO"
     banner_class = "rank-gold" if rank_num == 1 else "rank-silver" if rank_num == 2 else "rank-bronze" if rank_num == 3 else ""
 
-    # Construction du conteneur Bento complet
-    c_card, c_fav = st.columns([0.88, 0.12])
+    col_body, col_star = st.columns([0.88, 0.12])
+    with col_body:
+        card_html = (
+            f'<div class="bento-card">'
+            f'<div class="player-hero-banner {banner_class}">'
+            f'<div class="top-pills-row">'
+            f'<span class="tag-season">TOP {rank_text} • 2026/27</span>'
+            f'</div>'
+            f'<div class="hero-name">{player.get("name")}</div>'
+            f'<div class="hero-sub">'
+            f'<span class="pill-info">{player.get("pos", "OFF")}</span>'
+            f'<span class="pill-info">{player.get("team")}</span>'
+            f'<span class="pill-info">{player.get("nationality", "N/D")}</span>'
+            f'</div>'
+            f'</div>'
+            f'<div class="bento-grid">'
+            f'<div class="bento-tile highlight-goals"><div class="bento-val neon-cyan">{player.get("goals", 0)}</div><div class="bento-lbl">Buts</div></div>'
+            f'<div class="bento-tile"><div class="bento-val neon-lime">{player.get("assists", 0)}</div><div class="bento-lbl">Passes</div></div>'
+            f'<div class="bento-tile"><div class="bento-val">{player.get("matches", "-")}</div><div class="bento-lbl">Matchs</div></div>'
+            f'<div class="bento-tile"><div class="bento-val">{player.get("shots_pg", "-")}</div><div class="bento-lbl">Tirs / m</div></div>'
+            f'<div class="bento-tile"><div class="bento-val">{player.get("shots_on_target", "-")}</div><div class="bento-lbl">Cadres</div></div>'
+            f'<div class="bento-tile"><div class="bento-val neon-green">{player.get("avg_mins", "-")}</div><div class="bento-lbl">Temps jeu</div></div>'
+            f'</div>'
+            f'</div>'
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
     
-    top_html = (
-        f'<div class="bento-card">'
-        f'<div class="player-hero-banner {banner_class}">'
-        f'<div class="top-pills-row">'
-        f'<span class="tag-season">TOP {rank_text} &bull; 2026/27</span>'
-        f'</div>'
-        f'<div class="hero-name">{player.get("name")}</div>'
-        f'<div class="hero-sub">'
-        f'<span class="pill-info">{player.get("pos", "OFF")}</span>'
-        f'<span class="pill-info">{player.get("team")}</span>'
-        f'<span class="pill-info">{player.get("nationality", "N/D")}</span>'
-        f'</div>'
-        f'</div>'
-        f'<div class="bento-grid">'
-        f'<div class="bento-tile highlight-goals"><div class="bento-val neon-cyan">{player.get("goals", 0)}</div><div class="bento-lbl">Buts</div></div>'
-        f'<div class="bento-tile"><div class="bento-val neon-lime">{player.get("assists", 0)}</div><div class="bento-lbl">Passes</div></div>'
-        f'<div class="bento-tile"><div class="bento-val">{player.get("matches", "-")}</div><div class="bento-lbl">Matchs</div></div>'
-        f'<div class="bento-tile"><div class="bento-val">{player.get("shots_pg", "-")}</div><div class="bento-lbl">Tirs / m</div></div>'
-        f'<div class="bento-tile"><div class="bento-val">{player.get("shots_on_target", "-")}</div><div class="bento-lbl">Cadres</div></div>'
-        f'<div class="bento-tile"><div class="bento-val neon-green">{player.get("avg_mins", "-")}</div><div class="bento-lbl">Temps jeu</div></div>'
-        f'</div>'
-        f'</div>'
-    )
-    st.markdown(top_html, unsafe_allow_html=True)
+    with col_star:
+        star_icon = "★" if is_fav else "☆"
+        st.markdown('<div class="fav-btn-box">', unsafe_allow_html=True)
+        if st.button(star_icon, key=f"fav_btn_{pid}"):
+            if is_fav:
+                del st.session_state.favorites[pid]
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} retiré des favoris", icon="🗑️")
+            else:
+                st.session_state.favorites[pid] = player
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} ajouté aux favoris !", icon="⭐")
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# NAVBAR ZYRON FLUIDE (SANS HARD RELOAD DU NAVIGATEUR)
+# NAVBAR PROPRE SANS BLOCS BLANCS
 # ---------------------------------------------------------------------------
 st.markdown("""
-<div class="zyron-navbar-shell">
-    <div class="zyron-logo">GOAL <span>SNIPER</span>.</div>
-    <div class="zyron-pill-badge">Radar Live 2026/27</div>
+<div class="app-brand-bar">
+    <div class="brand-title">GOAL <span>SNIPER</span>.</div>
+    <div class="brand-badge">Radar Data 2026/27</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Liens ultra-légers sous le logo qui changent d'onglet INSTANTANÉMENT sans recharger
-st.markdown('<div class="zyron-nav-container">', unsafe_allow_html=True)
 n1, n2, n3, n4, n5 = st.columns(5)
 with n1:
-    lbl_1 = "**TOP 10 CHAMPIONNAT**" if st.session_state.nav_tab == "top10" else "Top 10 Championnat"
-    if st.button(lbl_1, key="nav_btn_top10", use_container_width=True):
+    tag_1 = "🔥 Top 10 Championnat" if st.session_state.nav_tab != "top10" else "🟢 Top 10 Championnat"
+    if st.button(tag_1, use_container_width=True):
         st.session_state.nav_tab = "top10"
         st.rerun()
 with n2:
-    lbl_2 = "**TOP 5 ÉQUIPE**" if st.session_state.nav_tab == "top5" else "Top 5 Équipe"
-    if st.button(lbl_2, key="nav_btn_top5", use_container_width=True):
+    tag_2 = "🛡️ Top 5 Équipe" if st.session_state.nav_tab != "top5" else "🟢 Top 5 Équipe"
+    if st.button(tag_2, use_container_width=True):
         st.session_state.nav_tab = "top5"
         st.rerun()
 with n3:
     count_fav = len(st.session_state.favorites)
-    lbl_3 = f"**FAVORIS ({count_fav})**" if st.session_state.nav_tab == "favoris" else f"Favoris ({count_fav})"
-    if st.button(lbl_3, key="nav_btn_fav", use_container_width=True):
+    tag_3 = f"⭐ Favoris ({count_fav})" if st.session_state.nav_tab != "favoris" else f"🟢 Favoris ({count_fav})"
+    if st.button(tag_3, use_container_width=True):
         st.session_state.nav_tab = "favoris"
         st.rerun()
 with n4:
-    lbl_4 = "**MON PROFIL**" if st.session_state.nav_tab == "profil" else "Mon Profil"
-    if st.button(lbl_4, key="nav_btn_prof", use_container_width=True):
+    tag_4 = "👤 Mon Profil" if st.session_state.nav_tab != "profil" else "🟢 Mon Profil"
+    if st.button(tag_4, use_container_width=True):
         st.session_state.nav_tab = "profil"
         st.rerun()
 with n5:
-    lbl_5 = "**PARAMÈTRES**" if st.session_state.nav_tab == "reglages" else "Paramètres"
-    if st.button(lbl_5, key="nav_btn_set", use_container_width=True):
+    tag_5 = "⚙️ Paramètres" if st.session_state.nav_tab != "reglages" else "🟢 Paramètres"
+    if st.button(tag_5, use_container_width=True):
         st.session_state.nav_tab = "reglages"
         st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# VUE 1 : TOP 10 PAR CHAMPIONNAT
+# VUE 1 : TOP 10 PAR CHAMPIONNAT (3 COLONNES DENSES COMPACTES)
 # ---------------------------------------------------------------------------
 if st.session_state.nav_tab == "top10":
-    selected_league_label = st.selectbox("Championnat :", list(LEAGUES.keys()))
+    selected_league_label = st.selectbox("Sélectionnez le championnat :", list(LEAGUES.keys()))
     league_data = LEAGUES[selected_league_label]
 
     with st.spinner("Synchronisation des buteurs..."):
         top_scorers = get_league_top_10(league_data["code"])
 
     if not top_scorers:
-        st.info("Selection des attaquants en cours...")
+        st.info("Sélection des attaquants en cours...")
         teams_list = fetch_league_teams(league_data["code"])
         fallback_players = []
         for t in teams_list[:6]:
@@ -545,7 +531,7 @@ if st.session_state.nav_tab == "top10":
                 fallback_players.append(t_roster[0])
         top_scorers = fallback_players
 
-    st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>🏆 Top Performers &bull; {selected_league_label}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>🏆 Top Performers • {selected_league_label}</div>", unsafe_allow_html=True)
     
     cols = st.columns(3)
     for idx, player in enumerate(top_scorers[:12], start=1):
@@ -565,17 +551,17 @@ elif st.session_state.nav_tab == "top5":
         teams_list = fetch_league_teams(l_code)
 
     if not teams_list:
-        st.warning("Impossible de recuperer la liste des clubs.")
+        st.warning("Impossible de récupérer la liste des clubs.")
     else:
         team_options = {t["name"]: t for t in teams_list}
         with c2:
-            chosen_team_name = st.selectbox("Equipe :", list(team_options.keys()), key="sel_t")
+            chosen_team_name = st.selectbox("Équipe :", list(team_options.keys()), key="sel_t")
             chosen_team = team_options[chosen_team_name]
 
         with st.spinner(f"Analyse de {chosen_team_name}..."):
             top_players = fetch_team_roster_profiles(l_code, chosen_team["id"], chosen_team_name)
 
-        st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>🎯 Top Forces Offensives &bull; {chosen_team_name}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:800; font-size:1.05rem; color:#00F0FF; margin:14px 0 14px 0;'>🎯 Top Forces Offensives • {chosen_team_name}</div>", unsafe_allow_html=True)
         if not top_players:
             st.info("Effectif indisponible pour ce club.")
         else:
@@ -588,11 +574,11 @@ elif st.session_state.nav_tab == "top5":
 # VUE 3 : MES FAVORIS
 # ---------------------------------------------------------------------------
 elif st.session_state.nav_tab == "favoris":
-    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⭐ Ma Selection de Buteurs</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⭐ Ma Sélection de Buteurs</div>", unsafe_allow_html=True)
     favs = st.session_state.favorites
 
     if not favs:
-        st.info("Aucun joueur favori pour l'instant.")
+        st.info("Aucun joueur favori pour l'instant. Cliquez sur l'étoile dorée (☆) en haut d'une carte pour l'enregistrer ici.")
     else:
         cols = st.columns(3)
         for idx, (pid, p_data) in enumerate(favs.items()):
@@ -606,37 +592,37 @@ elif st.session_state.nav_tab == "profil":
     st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>👤 Mon Espace Parieur</div>", unsafe_allow_html=True)
     p1, p2 = st.columns([1, 2])
     with p1:
-        st.markdown(f'''
+        st.markdown(f"""
             <div style="background:#111726; border:1px solid rgba(0, 240, 255, 0.3); border-radius:18px; padding:24px; text-align:center;">
-                <div style="font-size:3rem; color:#00F0FF;">PRO</div>
+                <div style="font-size:3rem; color:#00F0FF;">⚡</div>
                 <h3 style="margin:8px 0 2px 0; color:#FFFFFF;">{st.session_state.profile_name}</h3>
                 <span style="background:rgba(0, 240, 255, 0.15); color:#00F0FF; padding:3px 10px; border-radius:8px; font-weight:800; font-size:0.75rem;">MEMBRE ACTIF</span>
                 <p style="font-size:0.8rem; color:#64748B; margin-top:10px;">Session locale active</p>
             </div>
-        ''', unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     with p2:
         new_name = st.text_input("Pseudo / Nom :", value=st.session_state.profile_name)
         if new_name != st.session_state.profile_name:
             st.session_state.profile_name = new_name
-            st.success("Nom mis a jour !")
+            st.success("Nom mis à jour !")
         st.markdown("---")
         m1, m2 = st.columns(2)
         m1.metric("Joueurs favoris", len(st.session_state.favorites))
         m2.metric("Ligues couvertes", len(LEAGUES))
 
 # ---------------------------------------------------------------------------
-# VUE 5 : PARAMETRES
+# VUE 5 : PARAMÈTRES
 # ---------------------------------------------------------------------------
 elif st.session_state.nav_tab == "reglages":
-    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⚙️ Parametres & Cache</div>", unsafe_allow_html=True)
-    if st.button("Vider le cache et resynchroniser les donnees ESPN", type="primary"):
+    st.markdown("<div style='font-weight:800; font-size:1.2rem; color:#FFFFFF; margin-bottom:12px;'>⚙️ Paramètres & Cache</div>", unsafe_allow_html=True)
+    if st.button("Vider le cache et resynchroniser les données ESPN", type="primary"):
         st.cache_data.clear()
-        st.success("Cache vide avec succes !")
+        st.success("Cache vidé avec succès !")
         st.rerun()
     st.markdown("---")
     if st.button("Purger tous mes favoris"):
         st.session_state.favorites = {}
         save_stored_favorites({})
-        st.warning("Favoris effaces.")
+        st.warning("Favoris effacés.")
         st.rerun()
