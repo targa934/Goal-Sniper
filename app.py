@@ -8,7 +8,7 @@ st.set_page_config(
     page_title="Goal Sniper | Radar Buteurs & Passeurs",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 FAV_FILE = "user_favorites.json"
@@ -35,172 +35,270 @@ if "favorites" not in st.session_state:
 if "profile_name" not in st.session_state:
     st.session_state.profile_name = "Sniper_Pro"
 
+if "current_nav" not in st.session_state:
+    st.session_state.current_nav = "Top 10 Championnats"
+
 # ---------------------------------------------------------------------------
-# STYLE GRAPHIQUE ÉPURÉ & RESPONSIVE (CADRES UNIFIÉS & ÉTOILE SANS AUCUN CARRÉ)
+# DIRECTION ARTISTIQUE & CSS ULTRA-TRAVAILLÉ (STYLE EA SPORTS FC / WINAMAX PRO)
 # ---------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,800;0,900;1,800&family=JetBrains+Mono:wght@500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800&family=JetBrains+Mono:wght@500;700;800&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'Montserrat', -apple-system, sans-serif !important;
 }
 
+/* Fond général sombre et texturé */
 .stApp {
-    background: radial-gradient(circle at 50% 0%, #151c2e 0%, #0a0d14 70%, #06080d 100%);
-    color: #F0F4F8;
+    background: radial-gradient(circle at 50% 0%, #111726 0%, #090c13 65%, #05070a 100%) !important;
+    color: #F0F4F8 !important;
 }
 
-/* En-tête de page */
-.header-hero {
-    background: linear-gradient(135deg, rgba(20, 28, 48, 0.8) 0%, rgba(10, 14, 24, 0.9) 100%);
-    border: 1px solid rgba(0, 230, 118, 0.25);
-    border-radius: 18px;
-    padding: 22px 26px;
+/* -----------------------------------------------------------
+   MENU NAVIGATION SPORTIF MODERNE (BARRE SUPÉRIEURE ÉPURÉE)
+----------------------------------------------------------- */
+.top-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(0, 230, 118, 0.2);
+    border-radius: 16px;
+    padding: 10px 18px;
     margin-bottom: 22px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+}
+.brand-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 900;
+    font-size: 1.4rem;
+    letter-spacing: -0.5px;
+    color: #FFFFFF;
+}
+.brand-title span {
+    color: #00E676;
+    text-shadow: 0 0 12px rgba(0, 230, 118, 0.5);
+}
+
+/* Sidebar Streamlit compacte & stylisée */
+section[data-testid="stSidebar"] {
+    background: #0b0f19 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+    padding-top: 1.5rem !important;
+    gap: 0.5rem !important;
+}
+
+/* Style des radio boutons de navigation dans le menu */
+div[data-testid="stRadio"] > div {
+    gap: 8px !important;
+}
+div[data-testid="stRadio"] label {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    color: #94A3B8 !important;
+    transition: all 0.2s ease-in-out !important;
+    cursor: pointer !important;
+}
+div[data-testid="stRadio"] label:hover {
+    background: rgba(0, 230, 118, 0.08) !important;
+    border-color: rgba(0, 230, 118, 0.3) !important;
+    color: #FFFFFF !important;
+    transform: translateX(4px) !important;
+}
+div[data-testid="stRadio"] label[data-checked="true"] {
+    background: linear-gradient(90deg, rgba(0, 230, 118, 0.15) 0%, rgba(0, 230, 118, 0.02) 100%) !important;
+    border-color: #00E676 !important;
+    color: #00E676 !important;
+    box-shadow: 0 0 15px rgba(0, 230, 118, 0.15) !important;
+}
+
+/* -----------------------------------------------------------
+   HERO BANNER COMPACTE
+----------------------------------------------------------- */
+.header-hero {
+    background: linear-gradient(135deg, rgba(22, 33, 56, 0.6) 0%, rgba(11, 16, 28, 0.85) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 4px solid #00E676;
+    border-radius: 14px;
+    padding: 16px 22px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 .header-hero h1 {
     font-weight: 900;
-    font-size: 2rem;
+    font-size: 1.6rem;
     letter-spacing: -0.5px;
     margin: 0;
-    background: linear-gradient(90deg, #FFFFFF 0%, #00E676 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #FFFFFF;
 }
 .header-hero p {
     color: #94A3B8;
-    margin-top: 5px;
-    font-size: 0.92rem;
+    margin-top: 4px;
+    font-size: 0.86rem;
 }
 
-/* Redéfinition du conteneur Streamlit en VRAIE carte EA Sports unifiée */
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: linear-gradient(145deg, #131b2e 0%, #0e1422 100%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 18px !important;
-    padding: 16px 18px !important;
-    margin-bottom: 16px !important;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45) !important;
-    transition: all 0.25s ease-in-out !important;
+/* -----------------------------------------------------------
+   VRAIE CARTE JOUEUR EA SPORTS FC / TRADING CARD
+----------------------------------------------------------- */
+.fut-card-container {
+    background: linear-gradient(150deg, #151d30 0%, #0d121e 100%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
 }
-div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-    transform: translateY(-3px) !important;
-    border-color: rgba(0, 230, 118, 0.5) !important;
-    box-shadow: 0 12px 28px rgba(0, 230, 118, 0.12) !important;
+.fut-card-container:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 230, 118, 0.45);
+    box-shadow: 0 12px 30px rgba(0, 230, 118, 0.12);
 }
-
-/* Suppression TOTALE du cadre, fond blanc et padding du bouton favori */
-div[data-testid="stButton"] > button {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    color: #FFD700 !important;
-    font-size: 1.85rem !important;
-    line-height: 1 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    min-height: unset !important;
-    width: auto !important;
-    height: auto !important;
-    cursor: pointer !important;
-    transition: transform 0.2s ease, text-shadow 0.2s ease, color 0.2s ease !important;
+.fut-card-container.top-1 {
+    border-top: 3px solid #FFD700;
+}
+.fut-card-container.top-2 {
+    border-top: 3px solid #E2E8F0;
+}
+.fut-card-container.top-3 {
+    border-top: 3px solid #CD7F32;
 }
 
-/* Survol de l'icône : agrandissement et lueur dorée */
-div[data-testid="stButton"] > button:hover {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-    color: #FFE55C !important;
-    transform: scale(1.3) !important;
-    text-shadow: 0 0 14px rgba(255, 215, 0, 0.9) !important;
+.card-top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
 }
 
-div[data-testid="stButton"] > button:focus,
-div[data-testid="stButton"] > button:active {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: #FFD700 !important;
-}
-
-/* Typographies et badges intérieurs */
 .rank-badge {
     background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
-    color: #000;
+    color: #000000;
     font-weight: 900;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     padding: 2px 8px;
-    border-radius: 8px;
+    border-radius: 6px;
     display: inline-block;
-}
-
-.player-title {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #FFFFFF;
-    line-height: 1.2;
-    margin-top: 4px;
-}
-
-.player-sub {
-    font-size: 0.8rem;
-    color: #94A3B8;
-    margin-top: 4px;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25);
 }
 
 .tag-pill {
     display: inline-block;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 0.72rem;
-    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 800;
     text-transform: uppercase;
 }
-.tag-fw { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-.tag-mf { background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
-.tag-club { background: rgba(255, 255, 255, 0.08); color: #E2E8F0; }
+.tag-fw { background: rgba(239, 68, 68, 0.18); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+.tag-mf { background: rgba(59, 130, 246, 0.18); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.35); }
+.tag-club { background: rgba(255, 255, 255, 0.08); color: #E2E8F0; font-weight: 600; }
 
+.player-title {
+    font-size: 1.22rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    line-height: 1.2;
+    margin-top: 5px;
+    letter-spacing: -0.3px;
+}
+
+.player-sub {
+    font-size: 0.78rem;
+    color: #94A3B8;
+    margin-top: 2px;
+}
+
+/* Grille de stats compacte et percutante */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 7px;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 .stat-box {
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    padding: 8px 6px;
+    background: rgba(10, 15, 26, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 7px 4px;
     text-align: center;
 }
 .stat-value {
     font-family: 'JetBrains Mono', monospace;
     font-weight: 800;
-    font-size: 1.15rem;
+    font-size: 1.12rem;
     color: #00E676;
+    line-height: 1.1;
 }
 .stat-label {
-    font-size: 0.68rem;
+    font-size: 0.64rem;
     text-transform: uppercase;
-    color: #94A3B8;
-    letter-spacing: 0.5px;
-    margin-top: 2px;
+    color: #8A99AD;
+    letter-spacing: 0.4px;
+    margin-top: 3px;
+    font-weight: 600;
 }
 
+/* -----------------------------------------------------------
+   SUPPRESSION RADICALE DU RECTANGLE BLANC FAVORIS
+----------------------------------------------------------- */
+.fav-btn-slot div[data-testid="stButton"] {
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+.fav-btn-slot div[data-testid="stButton"] button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-width: unset !important;
+    min-height: unset !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1.55rem !important;
+    line-height: 1 !important;
+    color: #FFD700 !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, text-shadow 0.2s ease !important;
+}
+.fav-btn-slot div[data-testid="stButton"] button:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    color: #FFE55C !important;
+    transform: scale(1.3) !important;
+    text-shadow: 0 0 14px rgba(255, 215, 0, 0.85) !important;
+}
+.fav-btn-slot div[data-testid="stButton"] button:active,
+.fav-btn-slot div[data-testid="stButton"] button:focus {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Adaptation mobile */
 @media (max-width: 768px) {
-    .header-hero h1 { font-size: 1.45rem; }
-    .player-title { font-size: 1.1rem; }
-    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .stat-value { font-size: 1rem; }
+    .header-hero h1 { font-size: 1.35rem; }
+    .player-title { font-size: 1.05rem; }
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .stat-value { font-size: 0.95rem; }
 }
 </style>
 """
@@ -367,84 +465,107 @@ def get_league_top_10(league_code):
     return top_list[:10]
 
 # ---------------------------------------------------------------------------
-# RENDU CARTE JOUEUR AVEC CADRE COMPLET ET ÉTOILE DORÉE MINIMALISTE SANS CADRE
+# RENDU CARTE JOUEUR (STRUCTURE COMPLÈTE & ÉTOILE PURÉE SANS RECTANGLE)
 # ---------------------------------------------------------------------------
 def render_player_card(player, rank_num=None):
     pid = str(player.get("id", player.get("name")))
     is_fav = pid in st.session_state.favorites
 
     rank_badge_html = f'<span class="rank-badge">TOP #{rank_num}</span>' if rank_num else ''
+    top_cls = f"top-{rank_num}" if rank_num and rank_num <= 3 else ""
     pos_cls = 'tag-fw' if ('F' in player.get('pos', '') or 'A' in player.get('pos', '')) else 'tag-mf'
 
-    # Le conteneur avec border=True englobe l'intégralité de la carte (titre + bouton + stats)
-    with st.container(border=True):
-        col_info, col_fav = st.columns([0.88, 0.12])
-        
-        with col_info:
-            header_lines = [
-                '<div style="display:flex;gap:6px;align-items:center;">',
-                rank_badge_html,
-                f'<span class="tag-pill {pos_cls}">{player.get("pos", "OFF")}</span>',
-                f'<span class="tag-pill tag-club">{player.get("team")}</span>',
-                '</div>',
-                f'<div class="player-title">{player.get("name")}</div>',
-                f'<div class="player-sub">Nationalité : {player.get("nationality", "N/D")}</div>'
-            ]
-            st.markdown("".join(header_lines), unsafe_allow_html=True)
-
-        with col_fav:
-            star_symbol = "★" if is_fav else "☆"
-            btn_help = "Retirer des favoris" if is_fav else "Ajouter aux favoris"
-            if st.button(star_symbol, key=f"fav_{pid}", help=btn_help):
-                if is_fav:
-                    del st.session_state.favorites[pid]
-                    save_stored_favorites(st.session_state.favorites)
-                    st.toast(f"{player.get('name')} retiré des favoris", icon="🗑️")
-                else:
-                    st.session_state.favorites[pid] = player
-                    save_stored_favorites(st.session_state.favorites)
-                    st.toast(f"{player.get('name')} ajouté aux favoris !", icon="⭐")
-                st.rerun()
-
-        stats_lines = [
-            '<div class="stats-grid">',
-            f'<div class="stat-box"><div class="stat-value">{player.get("goals", 0)}</div><div class="stat-label">⚽ Buts récents</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("assists", 0)}</div><div class="stat-label">🅰️ Passes</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("matches", "-")}</div><div class="stat-label">🏟️ Matchs</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("shots_pg", "-")}</div><div class="stat-label">🎯 Tirs / m</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("shots_on_target", "-")}</div><div class="stat-label">🥅 Cadrés / m</div></div>',
-            f'<div class="stat-box"><div class="stat-value">{player.get("avg_mins", "-")}</div><div class="stat-label">⏱️ Temps jeu</div></div>',
+    # Enveloppe globale de la carte en HTML pour garantir que tout reste unifié
+    header_html = f"""
+    <div class="fut-card-container {top_cls}">
+        <div class="card-top-header">
+            <div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    {rank_badge_html}
+                    <span class="tag-pill {pos_cls}">{player.get('pos', 'OFF')}</span>
+                    <span class="tag-pill tag-club">{player.get('team')}</span>
+                </div>
+                <div class="player-title">{player.get('name')}</div>
+                <div class="player-sub">Nationalité : {player.get('nationality', 'N/D')}</div>
+            </div>
+    """
+    
+    # Rendu du haut de la carte avec Streamlit columns pour positionner l'étoile
+    c_info, c_fav = st.columns([0.88, 0.12])
+    with c_info:
+        top_frag = [
+            f'<div class="fut-card-container {top_cls}">',
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start;">',
+            '<div>',
+            '<div style="display:flex; gap:6px; align-items:center;">',
+            rank_badge_html,
+            f'<span class="tag-pill {pos_cls}">{player.get("pos", "OFF")}</span>',
+            f'<span class="tag-pill tag-club">{player.get("team")}</span>',
+            '</div>',
+            f'<div class="player-title">{player.get("name")}</div>',
+            f'<div class="player-sub">Nationalité : {player.get("nationality", "N/D")}</div>',
+            '</div>',
             '</div>'
         ]
-        st.markdown("".join(stats_lines), unsafe_allow_html=True)
+        st.markdown("".join(top_frag), unsafe_allow_html=True)
+    
+    with c_fav:
+        star_icon = "★" if is_fav else "☆"
+        st.markdown('<div class="fav-btn-slot">', unsafe_allow_html=True)
+        if st.button(star_icon, key=f"btn_fav_{pid}", help="Ajouter / Retirer des favoris"):
+            if is_fav:
+                del st.session_state.favorites[pid]
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} retiré des favoris", icon="🗑️")
+            else:
+                st.session_state.favorites[pid] = player
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} ajouté aux favoris !", icon="⭐")
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Grille de statistiques attachée
+    stats_frag = [
+        '<div style="margin-top:-14px; margin-bottom:14px; background:linear-gradient(150deg, #151d30 0%, #0d121e 100%); border:1px solid rgba(255,255,255,0.09); border-top:none; border-radius:0 0 16px 16px; padding:0 16px 16px 16px;">',
+        '<div class="stats-grid">',
+        f'<div class="stat-box"><div class="stat-value">{player.get("goals", 0)}</div><div class="stat-label">⚽ Buts récents</div></div>',
+        f'<div class="stat-box"><div class="stat-value">{player.get("assists", 0)}</div><div class="stat-label">🅰️ Passes</div></div>',
+        f'<div class="stat-box"><div class="stat-value">{player.get("matches", "-")}</div><div class="stat-label">🏟️ Matchs</div></div>',
+        f'<div class="stat-box"><div class="stat-value">{player.get("shots_pg", "-")}</div><div class="stat-label">🎯 Tirs / m</div></div>',
+        f'<div class="stat-box"><div class="stat-value">{player.get("shots_on_target", "-")}</div><div class="stat-label">🥅 Cadrés / m</div></div>',
+        f'<div class="stat-box"><div class="stat-value">{player.get("avg_mins", "-")}</div><div class="stat-label">⏱️ Temps jeu</div></div>',
+        '</div>',
+        '</div>'
+    ]
+    st.markdown("".join(stats_frag), unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# NAVIGATION
+# NAVIGATION PRINCIPALE (SIDEBAR ÉPURÉE & ULTRA-COMPACTE)
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("""
-        <div style="text-align: center; padding: 10px 0 20px 0;">
-            <div style="font-size: 2.2rem;">⚡ <b>GOAL SNIPER</b></div>
-            <div style="font-size: 0.8rem; color: #00E676; letter-spacing: 1.5px; text-transform: uppercase;">Radar Matchs & Buteurs</div>
+        <div style="padding: 10px 0 16px 0;">
+            <div style="font-size: 1.6rem; font-weight:900; letter-spacing:-0.5px;">⚡ <span style="color:#00E676;">GOAL</span> SNIPER</div>
+            <div style="font-size: 0.72rem; color: #64748B; text-transform: uppercase; font-weight:700; letter-spacing:1px;">Radar Prédictif</div>
         </div>
     """, unsafe_allow_html=True)
 
-    menu_selection = st.radio(
-        "Navigation",
-        [
-            "🔥 Top 10 Championnats",
-            "🛡️ Top 5 par Équipe",
-            "⭐ Mes Favoris",
-            "👤 Mon Profil",
-            "⚙️ Paramètres"
-        ],
-        label_visibility="collapsed"
-    )
-
+    nav_options = [
+        "🔥 Top 10 Championnats",
+        "🛡️ Top 5 par Équipe",
+        "⭐ Mes Favoris",
+        "👤 Mon Profil",
+        "⚙️ Paramètres"
+    ]
+    
+    selected_nav = st.radio("Navigation", nav_options, label_visibility="collapsed")
     st.markdown("---")
-    st.caption("Données extraites des feuilles de matchs réelles (ESPN Scoreboard Feed).")
+    st.caption("Données extraites des feuilles de matchs réelles ESPN Scoreboard.")
 
-if menu_selection == "🔥 Top 10 Championnats":
+# ---------------------------------------------------------------------------
+# VUES
+# ---------------------------------------------------------------------------
+if selected_nav == "🔥 Top 10 Championnats":
     st.markdown("""
         <div class="header-hero">
             <h1>🔥 Top 10 Buteurs du Championnat</h1>
@@ -474,7 +595,7 @@ if menu_selection == "🔥 Top 10 Championnats":
         with cols[(idx - 1) % 2]:
             render_player_card(player, rank_num=idx)
 
-elif menu_selection == "🛡️ Top 5 par Équipe":
+elif selected_nav == "🛡️ Top 5 par Équipe":
     st.markdown("""
         <div class="header-hero">
             <h1>🛡️ Top 5 Offensif par Club</h1>
@@ -510,7 +631,7 @@ elif menu_selection == "🛡️ Top 5 par Équipe":
                 with cols[(idx - 1) % 2]:
                     render_player_card(p, rank_num=idx)
 
-elif menu_selection == "⭐ Mes Favoris":
+elif selected_nav == "⭐ Mes Favoris":
     st.markdown("""
         <div class="header-hero">
             <h1>⭐ Ma Sélection de Joueurs</h1>
@@ -529,7 +650,7 @@ elif menu_selection == "⭐ Mes Favoris":
             with cols[idx % 2]:
                 render_player_card(p_data)
 
-elif menu_selection == "👤 Mon Profil":
+elif selected_nav == "👤 Mon Profil":
     st.markdown("""
         <div class="header-hero">
             <h1>👤 Espace Parieur</h1>
@@ -562,7 +683,7 @@ elif menu_selection == "👤 Mon Profil":
             m1.metric("Joueurs en favoris", len(st.session_state.favorites))
             m2.metric("Compétitions suivies", len(LEAGUES))
 
-elif menu_selection == "⚙️ Paramètres":
+elif selected_nav == "⚙️ Paramètres":
     st.markdown("""
         <div class="header-hero">
             <h1>⚙️ Paramètres & Configuration</h1>
