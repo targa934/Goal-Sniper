@@ -206,7 +206,7 @@ def scan_league_match_scorers(league_code):
     Scanne les scores et feuilles de matchs récents via le flux scoreboard ESPN.
     Extrait les buteurs réels, le club, les buts marqués et les matchs joués.
     """
-    scorers_dict = defaultdict(lambda: {"goals": 0, "assists": 0, "matches_scored": 0, "team": "N/D", "name": "", "pos": "ATT"})
+    scorers_dict = {}
     
     # On interroge les 4 dernières semaines pour extraire les buteurs en forme
     today = date.today()
@@ -251,15 +251,15 @@ def scan_league_match_scorers(league_code):
                         if "(" in clean:
                             clean = clean.split("(")[0].strip()
                         
-                        scorers_dict[clean]["name"] = clean
+                        if clean not in scorers_dict:
+                            scorers_dict[clean] = {"goals": 0, "assists": 0, "matches_scored": 0, "team": team_name or "N/D", "name": clean, "pos": "ATT"}
                         scorers_dict[clean]["goals"] += 1
                         if team_name:
                             scorers_dict[clean]["team"] = team_name
     except Exception:
         pass
 
-    # Si le flux direct scoringPlays est condensé, on effectue un complément sur les meilleurs buteurs connus
-    return scorers_dict
+    return dict(scorers_dict)
 
 @st.cache_data(ttl=1800)
 def fetch_league_teams(league_code):
