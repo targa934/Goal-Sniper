@@ -315,4 +315,245 @@ def fetch_team_top_players(league_code, team_id, team_name):
 # ---------------------------------------------------------------------------
 # CARTE JOUEUR ÉPURÉE SANS PHOTO
 # ---------------------------------------------------------------------------
-def render_player_card(player,
+def render_player_card(player, rank_num=None, category_mode="Buteur"):
+    pid = str(player.get("id", player.get("name")))
+    is_fav = pid in st.session_state.favorites
+
+    col_card, col_btn = st.columns([5.2, 0.8])
+    
+    with col_card:
+        rank_badge_html = f'<span class="rank-badge">TOP #{rank_num}</span>' if rank_num else ''
+        rank_top_cls = 'rank-top' if rank_num and rank_num <= 3 else ''
+        pos_cls = 'tag-fw' if ('F' in player.get('pos', '') or 'A' in player.get('pos', '')) else 'tag-mf'
+        
+        card_lines = [
+            f'<div class="player-card {rank_top_cls}">',
+            '<div class="card-header-bar">',
+            '<div>',
+            '<div style="display:flex;gap:6px;align-items:center;">',
+            rank_badge_html,
+            f'<span class="tag-pill {pos_cls}">{player.get("pos", "OFF")}</span>',
+            f'<span class="tag-pill tag-club">{player.get("team")}</span>',
+            '</div>',
+            f'<div class="player-title">{player.get("name")}</div>',
+            f'<div class="player-sub">Nationalité : {player.get("nationality", "N/D")}</div>',
+            '</div>',
+            '</div>',
+            '<div class="stats-grid">',
+            f'<div class="stat-box"><div class="stat-value">{player.get("goals", "N/D")}</div><div class="stat-label">⚽ Buts</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("assists", "N/D")}</div><div class="stat-label">🅰️ Passes</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("matches", "N/D")}</div><div class="stat-label">🏟️ Matchs</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("shots_pg", "N/D")}</div><div class="stat-label">🎯 Tirs / m</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("shots_on_target", "N/D")}</div><div class="stat-label">🥅 Cadrés / m</div></div>',
+            f'<div class="stat-box"><div class="stat-value">{player.get("avg_mins", "N/D")}</div><div class="stat-label">⏱️ Temps jeu</div></div>',
+            '</div>',
+            '</div>'
+        ]
+        st.markdown("".join(card_lines), unsafe_allow_html=True)
+
+    with col_btn:
+        st.write("")
+        fav_label = "★" if is_fav else "☆"
+        fav_help = "Retirer des favoris" if is_fav else "Ajouter aux favoris"
+        if st.button(fav_label, key=f"fav_{pid}", help=fav_help, use_container_width=True):
+            if is_fav:
+                del st.session_state.favorites[pid]
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} retiré des favoris", icon="🗑️")
+            else:
+                st.session_state.favorites[pid] = player
+                save_stored_favorites(st.session_state.favorites)
+                st.toast(f"{player.get('name')} ajouté aux favoris !", icon="⭐")
+            st.rerun()
+
+# ---------------------------------------------------------------------------
+# NAVIGATION
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.markdown("""
+        <div style="text-align: center; padding: 10px 0 20px 0;">
+            <div style="font-size: 2.2rem;">⚡ <b>GOAL SNIPER</b></div>
+            <div style="font-size: 0.8rem; color: #00E676; letter-spacing: 1.5px; text-transform: uppercase;">Radar Offensif & Data</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    menu_selection = st.radio(
+        "Navigation",
+        [
+            "🔥 Top 10 Championnats",
+            "🛡️ Top 5 par Équipe",
+            "⭐ Mes Favoris",
+            "👤 Mon Profil",
+            "⚙️ Paramètres"
+        ],
+        label_visibility="collapsed"
+    )
+
+    st.markdown("---")
+    st.caption("Données réelles certifiées de la saison en cours (ESPN Official Feed).")
+
+# ---------------------------------------------------------------------------
+# VUE 1 : TOP 10 PAR CHAMPIONNAT
+# ---------------------------------------------------------------------------
+if menu_selection == "🔥 Top 10 Championnats":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>🔥 Top 10 Buteurs & Passeurs</h1>
+            <p>Classement en temps réel des joueurs les plus décisifs de chaque compétition officielle.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    f_col1, f_col2 = st.columns([2, 2])
+    with f_col1:
+        selected_league_label = st.selectbox("Sélectionnez le championnat :", list(LEAGUES.keys()))
+        league_data = LEAGUES[selected_league_label]
+    
+    with f_col2:
+        profil_mode = st.radio("Profil recherché :", ["⚽ Meilleurs Buteurs", "🅰️ Meilleurs Passeurs"], horizontal=True)
+
+    with st.spinner("Synchronisation des classements officiels réels..."):
+        buteurs_top, passeurs_top = fetch_official_league_leaders(league_data["code"])
+
+    target_list = buteurs_top if "Buteurs" in profil_mode else passeurs_top
+
+    if not target_list:
+        st.info("Aucune statistique officielle publiée pour le moment sur cette compétition.")
+    else:
+        st.markdown(f"### {league_data['flag']} Top 10 {selected_league_label} — {profil_mode}")
+        cols = st.columns(2)
+        for idx, player in enumerate(target_list[:10], start=1):
+            with cols[(idx - 1) % 2]:
+                render_player_card(player, rank_num=idx, category_mode=profil_mode)
+
+# ---------------------------------------------------------------------------
+# VUE 2 : TOP 5 PAR ÉQUIPE
+# ---------------------------------------------------------------------------
+elif menu_selection == "🛡️ Top 5 par Équipe":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>🛡️ Top 5 Offensif par Club</h1>
+            <p>Analysez les 5 joueurs d'attaque les plus dangereux d'un effectif ciblé.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        league_label = st.selectbox("Ligue :", list(LEAGUES.keys()), key="team_league_sel")
+        l_code = LEAGUES[league_label]["code"]
+
+    with st.spinner("Chargement des clubs..."):
+        teams_list = fetch_league_teams(l_code)
+
+    if not teams_list:
+        st.warning("Impossible de récupérer la liste des clubs pour ce tournoi.")
+    else:
+        team_options = {t["name"]: t for t in teams_list}
+        with c2:
+            chosen_team_name = st.selectbox("Sélectionnez l'équipe :", list(team_options.keys()))
+            chosen_team = team_options[chosen_team_name]
+
+        with st.spinner(f"Analyse des forces offensives de {chosen_team_name}..."):
+            top_players = fetch_team_top_players(l_code, chosen_team["id"], chosen_team_name)
+
+        st.markdown(f"### 🎯 Top 5 Offensive Squad — {chosen_team_name}")
+        if not top_players:
+            st.info("Effectif indisponible pour ce club.")
+        else:
+            cols = st.columns(2)
+            for idx, p in enumerate(top_players, start=1):
+                with cols[(idx - 1) % 2]:
+                    render_player_card(p, rank_num=idx)
+
+# ---------------------------------------------------------------------------
+# VUE 3 : MES FAVORIS
+# ---------------------------------------------------------------------------
+elif menu_selection == "⭐ Mes Favoris":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>⭐ Ma Sélection de Joueurs</h1>
+            <p>Vos profils clés sauvegardés pour préparer vos paris et suivre vos buteurs fétiches.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    favs = st.session_state.favorites
+
+    if not favs:
+        st.info("Vous n'avez pas encore ajouté de joueur à vos favoris. Cliquez sur l'étoile (☆) sur une carte pour l'enregistrer ici.")
+    else:
+        st.write(f"**{len(favs)} joueur(s) dans votre carnet de sniper :**")
+        cols = st.columns(2)
+        for idx, (pid, p_data) in enumerate(favs.items()):
+            with cols[idx % 2]:
+                render_player_card(p_data)
+
+# ---------------------------------------------------------------------------
+# VUE 4 : MON PROFIL
+# ---------------------------------------------------------------------------
+elif menu_selection == "👤 Mon Profil":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>👤 Espace Parieur</h1>
+            <p>Gérez vos préférences, vos sélections et vos paramètres personnels.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    p1, p2 = st.columns([1, 2])
+    with p1:
+        st.markdown(f"""
+            <div style="background: rgba(19, 27, 46, 0.8); border: 1px solid rgba(0, 230, 118, 0.3); border-radius: 16px; padding: 20px; text-align: center;">
+                <div style="font-size: 3.5rem;">🎯</div>
+                <h3 style="margin: 8px 0 2px 0;">{st.session_state.profile_name}</h3>
+                <span class="tag-pill" style="background: rgba(0, 230, 118, 0.2); color: #00E676;">Membre Pro</span>
+                <p style="font-size: 0.8rem; color: #94A3B8; margin-top: 10px;">Compte local actif sur cet appareil</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with p2:
+        with st.container(border=True):
+            st.markdown("#### ⚙️ Vos Informations")
+            new_name = st.text_input("Pseudo / Nom d'utilisateur :", value=st.session_state.profile_name)
+            if new_name != st.session_state.profile_name:
+                st.session_state.profile_name = new_name
+                st.success("Nom mis à jour !")
+
+            st.markdown("---")
+            st.markdown("#### 📊 Statistiques de votre compte")
+            m1, m2 = st.columns(2)
+            m1.metric("Joueurs en favoris", len(st.session_state.favorites))
+            m2.metric("Compétitions suivies", len(LEAGUES))
+
+# ---------------------------------------------------------------------------
+# VUE 5 : PARAMÈTRES
+# ---------------------------------------------------------------------------
+elif menu_selection == "⚙️ Paramètres":
+    st.markdown("""
+        <div class="header-hero">
+            <h1>⚙️ Paramètres & Configuration</h1>
+            <p>Personnalisation de l'affichage et maintenance des données en cache.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown("#### 🎨 Thème & Affichage")
+        accent = st.selectbox(
+            "Couleur d'accentuation principale :",
+            ["Vert Néon (#00E676)", "Cyan Tech (#00F0FF)", "Or EA Sports (#FFD700)"],
+            index=0
+        )
+        st.session_state.theme_accent = accent
+
+        st.markdown("---")
+        st.markdown("#### 🧹 Données & Cache")
+        st.caption("Si une statistique vient d'évoluer en direct, vous pouvez forcer le rafraîchissement des données ESPN.")
+        if st.button("Vider le cache et resynchroniser", type="primary"):
+            st.cache_data.clear()
+            st.success("Le cache a été vidé avec succès.")
+            st.rerun()
+
+        st.markdown("---")
+        st.markdown("#### 🗑️ Réinitialisation des favoris")
+        if st.button("Supprimer tous mes favoris"):
+            st.session_state.favorites = {}
+            save_stored_favorites({})
+            st.warning("Tous vos favoris ont été effacés.")
+            st.rerun()
